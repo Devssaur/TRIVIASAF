@@ -14,6 +14,12 @@ from routes.admin import admin_bp
 
 app = Flask(__name__)
 
+# ── Contexto global (disponível em todos os templates) ───────
+@app.context_processor
+def inject_globals():
+    dev_mode = os.environ.get('DEV_MODE', '').lower() in ('1', 'true', 'yes')
+    return dict(dev_mode=dev_mode)
+
 # ── Registro de Rotas API ──────────────────────────────────
 app.register_blueprint(auth_bp,          url_prefix='/api/auth')
 app.register_blueprint(solicitacoes_bp,  url_prefix='/api/solicitacoes')

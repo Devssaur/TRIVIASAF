@@ -24,13 +24,13 @@
       <div class="stat-value" id="s-usuarios">—</div>
       <div class="stat-label">Usuários Ativos</div>
     </div>
+    <div class="stat-card" style="border-top:3px solid var(--warning);">
+      <div class="stat-value" id="s-pendentes" style="color:var(--warning);">—</div>
+      <div class="stat-label">Aguardando Aprovação</div>
+    </div>
     <div class="stat-card accent">
       <div class="stat-value" id="s-total-safs">—</div>
       <div class="stat-label">Total SAFs</div>
-    </div>
-    <div class="stat-card success">
-      <div class="stat-value" id="s-integradas">—</div>
-      <div class="stat-label">Integradas SAP</div>
     </div>
     <div class="stat-card">
       <div class="stat-value" id="s-logs" style="color:var(--info);">—</div>
@@ -49,21 +49,30 @@
     <div class="card">
       <div class="card-header">
         <span class="card-title">Gestão de Usuários</span>
-        <span id="loading-users" class="text-muted text-sm">Carregando...</span>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <label style="font-size:.78rem;color:var(--text-muted);display:flex;align-items:center;gap:.35rem;">
+            <input type="checkbox" id="filter-pendentes" style="accent-color:var(--warning);">
+            Somente pendentes
+          </label>
+          <span id="loading-users" class="text-muted text-sm">Carregando...</span>
+        </div>
       </div>
-      <div class="table-wrapper" style="border:none;box-shadow:none;border-radius:0;">
-        <table class="table">
+      <div class="table-wrapper" style="border:none;box-shadow:none;border-radius:0;overflow-x:auto;">
+        <table class="table" style="min-width:860px;">
           <thead>
             <tr>
               <th>Nome</th>
               <th>E-mail</th>
+              <th>Empresa</th>
+              <th>Área</th>
               <th>Perfil</th>
-              <th>Ativo</th>
-              <th>Criado em</th>
+              <th>Acesso</th>
+              <th>Cadastro</th>
+              <th style="width:180px;">Ações</th>
             </tr>
           </thead>
           <tbody id="usuarios-body">
-            <tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center;">Carregando...</td></tr>
+            <tr><td colspan="8" class="text-muted text-sm" style="padding:1.5rem;text-align:center;">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -125,8 +134,58 @@ document.addEventListener('DOMContentLoaded', async function () {
   const user = Auth.requireAuth(['ADMIN']);
   if (!user) return;
 
-  let allLogs = [];
-  let allUsuarios = [];
+  let allLogs      = [];
+  let allUsuarios  = [];
+
+  // ── Labels / badges de perfil ────────────────────
+  const PERFIS_LABEL  = { Solicitante: 'Solicitante', CCM: 'CCM', Administrador: 'Administrador' };
+  const PERFIS_BADGE  = { Solicitante: 'badge-aberta', CCM: 'badge-em_analise', Administrador: 'badge-aprovada' };
+  const EMPRESAS      = { TRIVIA:'Trivia Trens', TIC:'Tic Trens', METROBH:'Metrô BH', GOCIL:'Gocil' };
+  const AREAS         = { MANUTENCAO:'Manutenção', OPERACAO:'Operação', ENGENHARIA:'Engenharia',
+                          TI:'TI', SEGURANCA:'Segurança', LIMPEZA:'Limpeza e conservação' };
+
+  // ── Renderiza usuários ───────────────────────────
+  function renderUsuarios(list) {
+    document.getElementById('loading-users').textContent = `${list.length} registro(s)`;
+    if (!list.length) {
+      document.getElementById('usuarios-body').innerHTML =
+        '<tr><td colspan="8" class="text-muted" style="text-align:center;padding:1.5rem;">Nenhum usuário encontrado.</td></tr>';
+      return;
+    }
+    const rows = list.map(u => {
+      const aprovBadge = u.aprovado
+        ? '<span style="color:var(--green);font-weight:700;font-size:.8rem;">&#9679; Aprovado</span>'
+        : '<span style="color:var(--warning);font-weight:700;font-size:.8rem;">&#9203; Pendente</span>';
+
+      const toggleSwitch = `
+        <label class="aprov-switch" title="${u.aprovado ? 'Clique para bloquear acesso' : 'Clique para aprovar acesso'}">
+          <input type="checkbox" ${u.aprovado ? 'checked' : ''}
+                 onchange="toggleAcesso('${u.id}', this.checked, this)">
+          <span class="aprov-slider"></span>
+        </label>`;
+
+      const perfilSelect = `
+        <select class="field-input" style="height:28px;font-size:.75rem;padding:2px 8px;"
+                onchange="mudarPerfil('${u.id}', this.value)">
+          <option value="Solicitante" ${u.perfil==='Solicitante'?'selected':''}>Solicitante</option>
+          <option value="CCM"         ${u.perfil==='CCM'        ?'selected':''}>CCM</option>
+          <option value="Administrador" ${u.perfil==='Administrador'?'selected':''}>Administrador</option>
+        </select>`;
+
+      return `
+        <tr id="user-row-${u.id}">
+          <td style="font-weight:600;">${u.nome || '—'}</td>
+          <td class="text-muted text-sm">${u.email || '—'}</td>
+          <td class="text-sm">${EMPRESAS[u.empresa] || u.empresa || '—'}</td>
+          <td class="text-sm">${AREAS[u.area] || u.area || '—'}</td>
+          <td>${perfilSelect}</td>
+          <td>${aprovBadge}</td>
+          <td class="text-muted text-sm">${Fmt.date(u.criado_em)}</td>
+          <td style="text-align:center;">${toggleSwitch}</td>
+        </tr>`;
+    }).join('');
+    document.getElementById('usuarios-body').innerHTML = rows;
+  }
 
   // ── Carrega dados em paralelo ────────────────────
   const [resUsers, resLogs] = await Promise.all([
@@ -134,45 +193,27 @@ document.addEventListener('DOMContentLoaded', async function () {
     API.logs(),
   ]);
 
-  // ── Usuários ──────────────────────────────────────
-  const perfisLabel = { SOLICITANTE: 'Solicitante', CCM: 'CCM', ADMIN: 'Administrador' };
-  const perfisBadge = { SOLICITANTE: 'badge-aberta', CCM: 'badge-em_analise', ADMIN: 'badge-aprovada' };
-
   if (resUsers.ok) {
     allUsuarios = resUsers.data.usuarios || resUsers.data || [];
-    document.getElementById('s-usuarios').textContent = allUsuarios.filter(u => u.ativo !== false).length;
-    document.getElementById('loading-users').textContent = `${allUsuarios.length} registros`;
-
-    const rows = allUsuarios.map(u => `
-      <tr>
-        <td style="font-weight:600;">${u.nome || '—'}</td>
-        <td class="text-muted">${u.email || '—'}</td>
-        <td><span class="badge ${perfisBadge[u.perfil] || ''}">${perfisLabel[u.perfil] || u.perfil}</span></td>
-        <td>
-          ${u.ativo !== false
-            ? '<span style="color:var(--green);font-weight:700;font-size:.8rem;">● Ativo</span>'
-            : '<span style="color:var(--text-light);font-size:.8rem;">○ Inativo</span>'}
-        </td>
-        <td class="text-muted text-sm">${Fmt.date(u.criado_em)}</td>
-      </tr>`).join('');
-
-    document.getElementById('usuarios-body').innerHTML = rows || '<tr><td colspan="5" class="text-muted" style="text-align:center;padding:1.5rem;">Nenhum usuário.</td></tr>';
+    document.getElementById('s-usuarios').textContent = allUsuarios.filter(u => u.aprovado).length;
+    document.getElementById('s-pendentes').textContent = allUsuarios.filter(u => !u.aprovado).length;
+    renderUsuarios(allUsuarios);
   } else {
     document.getElementById('usuarios-body').innerHTML =
-      `<tr><td colspan="5" style="color:var(--danger);text-align:center;padding:1.5rem;">${resUsers.data.erro || 'Erro ao carregar usuários.'}</td></tr>`;
+      `<tr><td colspan="8" style="color:var(--danger);text-align:center;padding:1.5rem;">${resUsers.data.erro || 'Erro ao carregar usuários.'}</td></tr>`;
   }
+
+  // Filtro de pendentes
+  document.getElementById('filter-pendentes').addEventListener('change', function () {
+    renderUsuarios(this.checked ? allUsuarios.filter(u => !u.aprovado) : allUsuarios);
+  });
 
   // ── Logs ──────────────────────────────────────────
   const eventoClasses = {
-    LOGIN: 'badge-aprovada',
-    CRIACAO_SAF: 'badge-aberta',
-    AVALIACAO_CCM: 'badge-em_analise',
-    INTEGRACAO_SAP: 'badge-aprovada',
-    BAPI_CREATE_ERROR: 'badge-cancelada',
-    AVALIACAO_CCM_DEVOLVIDA: 'badge-devolvida',
-    AVALIACAO_CCM_CANCELADA: 'badge-cancelada',
-    INTEGRACAO_SAP_SUCESSO: 'badge-aprovada',
-    INTEGRACAO_SAP_ERRO: 'badge-cancelada',
+    LOGIN: 'badge-aprovada', CRIACAO_SAF: 'badge-aberta',
+    AVALIACAO_CCM: 'badge-em_analise', INTEGRACAO_SAP: 'badge-aprovada',
+    BAPI_CREATE_ERROR: 'badge-cancelada', AVALIACAO_CCM_DEVOLVIDA: 'badge-devolvida',
+    AVALIACAO_CCM_CANCELADA: 'badge-cancelada', INTEGRACAO_SAP_ERRO: 'badge-cancelada',
   };
 
   function renderLogs(list) {
@@ -204,15 +245,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     allLogs = resLogs.data.logs || resLogs.data || [];
     document.getElementById('s-logs').textContent = allLogs.length;
     renderLogs(allLogs);
-
-    // Filtro de busca
     let searchTimer;
     document.getElementById('log-search').addEventListener('input', function () {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => {
         const q = this.value.trim().toLowerCase();
-        const filtered = q ? allLogs.filter(l => (l.evento||'').toLowerCase().includes(q)) : allLogs;
-        renderLogs(filtered);
+        renderLogs(q ? allLogs.filter(l => (l.evento||'').toLowerCase().includes(q)) : allLogs);
       }, 200);
     });
   } else {
@@ -220,9 +258,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       `<tr><td colspan="4" style="color:var(--danger);text-align:center;padding:1.5rem;">${resLogs.data.erro || 'Erro ao carregar logs.'}</td></tr>`;
   }
 
-  // Stats
   document.getElementById('s-total-safs').textContent = '—';
-  document.getElementById('s-integradas').textContent  = '—';
 
   // ── Tabs ──────────────────────────────────────────
   document.querySelectorAll('[data-tab]').forEach(tab => {
@@ -235,14 +271,67 @@ document.addEventListener('DOMContentLoaded', async function () {
   });
 });
 
+// ── Ações de usuário ─────────────────────────────
+async function toggleAcesso(id, aprovado, el) {
+  if (!aprovado) {
+    ConfirmModal.show({
+      title: 'Bloquear acesso',
+      message: 'Deseja bloquear o acesso deste usuário?',
+      confirmText: 'Bloquear',
+      confirmClass: 'btn-danger',
+      onConfirm: () => _aplicarAcesso(id, false, el)
+    });
+    el.checked = true; // reverte visualmente até confirmação
+    return;
+  }
+  await _aplicarAcesso(id, true, el);
+}
+
+async function _aplicarAcesso(id, aprovado, el) {
+  el.checked = aprovado;
+  const res = await API.aprovarUsuario(id, aprovado);
+  if (res.ok) {
+    Toast.success(aprovado ? 'Usuário aprovado!' : 'Acesso bloqueado.');
+    const row = el.closest('tr');
+    if (row) {
+      const badgeCell = row.cells[5];
+      badgeCell.innerHTML = aprovado
+        ? '<span style="color:var(--green);font-weight:700;font-size:.8rem;">&#9679; Aprovado</span>'
+        : '<span style="color:var(--warning);font-weight:700;font-size:.8rem;">&#9203; Pendente</span>';
+      el.closest('label').title = aprovado ? 'Clique para bloquear acesso' : 'Clique para aprovar acesso';
+    }
+  } else {
+    Toast.error(res.data.erro || 'Erro ao alterar acesso.');
+    el.checked = !aprovado;
+  }
+}
+
+async function aprovarUsuario(id) {
+  const res = await API.aprovarUsuario(id, true);
+  if (res.ok) { Toast.success('Usuário aprovado!'); location.reload(); }
+  else         Toast.error(res.data.erro || 'Erro ao aprovar.');
+}
+
+async function bloquearUsuario(id) {
+  const confirmed = await confirmAction('Bloquear acesso deste usuário?');
+  if (!confirmed) return;
+  const res = await API.aprovarUsuario(id, false);
+  if (res.ok) { Toast.success('Acesso bloqueado.'); location.reload(); }
+  else         Toast.error(res.data.erro || 'Erro ao bloquear.');
+}
+
+async function mudarPerfil(id, perfil) {
+  const res = await API.alterarPerfil(id, perfil);
+  if (res.ok) Toast.success(`Perfil alterado para ${perfil}.`);
+  else        Toast.error(res.data.erro || 'Erro ao alterar perfil.');
+}
+
 // Mostra payload JSON em modal
 function showPayload(jsonStr) {
   try {
     const obj = JSON.parse(jsonStr);
     document.getElementById('payload-content').textContent = JSON.stringify(obj, null, 2);
-  } catch {
-    document.getElementById('payload-content').textContent = jsonStr;
-  }
+  } catch { document.getElementById('payload-content').textContent = jsonStr; }
   Modal.open('modal-payload');
 }
 </script>

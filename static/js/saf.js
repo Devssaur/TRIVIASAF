@@ -35,8 +35,8 @@ const Auth = (() => {
   function redirectIfLoggedIn() {
     const user = getUser();
     if (!user) return;
-    const dest = { SOLICITANTE: '/minhas-safs', CCM: '/fila-ccm', ADMIN: '/admin' };
-    window.location.href = dest[user.perfil] || '/minhas-safs';
+    const dest = { SOLICITANTE: '/nova-saf', CCM: '/fila-ccm', ADMIN: '/admin' };
+    window.location.href = dest[user.perfil] || '/nova-saf';
   }
 
   return { getUser, setUser, clearUser, requireAuth, redirectIfLoggedIn };
@@ -93,8 +93,11 @@ const API = (() => {
     sintomas:     (eid)  => request('GET', `/dados/sintomas/${eid}`),
 
     // Admin
-    logs:         ()     => request('GET', '/admin/logs'),
-    usuarios:     ()     => request('GET', '/admin/usuarios'),
+    logs:             ()               => request('GET',  '/admin/logs'),
+    usuarios:         ()               => request('GET',  '/admin/usuarios'),
+    aprovarUsuario:   (id, aprovado, perfil) => request('POST', `/admin/usuarios/${id}/aprovar`, { aprovado, perfil }),
+    alterarPerfil:    (id, perfil)     => request('PUT',  `/admin/usuarios/${id}/perfil`, { perfil }),
+    toggleSap:        (id, val)        => request('PATCH', `/ccm/toggle-sap/${id}`, { atualizado_sap: val }),
   };
 })();
 
@@ -245,11 +248,83 @@ function setupToolbar() {
     perfil.textContent = labels[user.perfil] || user.perfil;
   }
 
+  // SOLICITANTE: "Minhas SAFs" tab is in the sidebar, not the nav bar
+  if (user.perfil === 'SOLICITANTE') {
+    document.querySelectorAll('.nav-tab[href="/minhas-safs"]').forEach(el => el.remove());
+  }
+
+  // Sidebar toggle
+  const sidebar  = document.getElementById('sidebar');
+  const overlay  = document.getElementById('sidebar-overlay');
+  const menuBtn  = document.querySelector('.toolbar-menu-btn');
+  const closeBtn = document.getElementById('sidebar-close');
+  function _openSidebar()  { sidebar && sidebar.classList.add('open');    overlay && overlay.classList.add('open'); }
+  function _closeSidebar() { sidebar && sidebar.classList.remove('open'); overlay && overlay.classList.remove('open'); }
+  if (menuBtn)  menuBtn.addEventListener('click', _openSidebar);
+  if (overlay)  overlay.addEventListener('click', _closeSidebar);
+  if (closeBtn) closeBtn.addEventListener('click', _closeSidebar);
+  _setupSidebar(user);
+
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       Auth.clearUser();
       window.location.href = '/login';
+    });
+  }
+}
+
+function _setupSidebar(user) {
+  const nav = document.getElementById('sidebar-nav');
+  if (!nav) return;
+
+  const path = window.location.pathname;
+  const LINKS = {
+    SOLICITANTE: [
+      { href: '/nova-saf',    label: 'Nova SAF',    icon: '&#43;' },
+      { href: '/minhas-safs', label: 'Minhas SAFs', icon: '&#128203;' },
+    ],
+    CCM: [
+      { href: '/fila-ccm', label: 'Fila CCM', icon: '&#128203;' },
+    ],
+    ADMIN: [
+      { href: '/admin', label: 'Administração', icon: '&#9881;' },
+    ],
+  };
+
+  const items = LINKS[user.perfil] || [];
+  nav.innerHTML = items.map(({ href, label, icon }) => {
+    const active = path === href ? ' active' : '';
+    return `<a href="${href}" class="sidebar-link${active}">\
+<span class="sidebar-icon">${icon}</span><span>${label}</span></a>`;
+  }).join('');
+
+  const logoutSide = document.getElementById('sidebar-logout');
+  if (logoutSide) {
+    logoutSide.addEventListener('click', () => {
+      Auth.clearUser();
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/login';
+    });
+  }
+
+  // Dev profile switcher (only rendered when DEV_MODE=true on server)
+  const devSelect = document.getElementById('dev-perfil-select');
+  if (devSelect) {
+    const DB_PERFIL = { SOLICITANTE: 'Solicitante', CCM: 'CCM', ADMIN: 'Administrador' };
+    const DEST      = { SOLICITANTE: '/nova-saf', CCM: '/fila-ccm', ADMIN: '/admin' };
+    devSelect.addEventListener('change', async function () {
+      const appPerfil = this.value;
+      if (!appPerfil) return;
+      const res = await API.alterarPerfil(user.id, DB_PERFIL[appPerfil]);
+      if (!res.ok) {
+        Toast.error(res.data?.erro || 'Erro ao trocar perfil.');
+        this.value = '';
+        return;
+      }
+      Auth.setUser({ ...user, perfil: appPerfil });
+      window.location.href = DEST[appPerfil] || '/';
     });
   }
 }

@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}SAF{% endblock %} – Sistema de Abertura de Falhas</title>
+  <title>{% block title %}Trivia SAF{% endblock %}</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/saf.css') }}">
   {% block head %}{% endblock %}
 </head>
@@ -15,12 +16,12 @@
   <div class="toolbar-top">
     <div class="toolbar-brand">
       <button class="toolbar-menu-btn" aria-label="Menu">&#9776;</button>
-      <span class="toolbar-title">SAF &ndash; Sistema de Abertura de Falhas</span>
+      <div class="toolbar-brand-text">
+        <span class="toolbar-title">Trivia SAF</span>
+        <span class="toolbar-user-sub" id="toolbar-user-name"></span>
+      </div>
     </div>
     <div class="toolbar-user">
-      <span class="toolbar-user-name" id="toolbar-user-name"></span>
-      <div class="toolbar-user-badge" id="toolbar-user-badge">?</div>
-      <button class="btn-logout" id="btn-logout">Sair</button>
       <img src="{{ url_for('static', filename='logo.png') }}" class="toolbar-logo" alt="Trivia SAF">
     </div>
   </div>
@@ -29,6 +30,27 @@
     {% block toolbar_nav %}{% endblock %}
   </nav>
 </header>
+
+<!-- ===================== SIDEBAR ===================== -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<aside class="sidebar" id="sidebar" aria-label="Menu lateral">
+  <div class="sidebar-header">
+    <img src="{{ url_for('static', filename='logo.png') }}" class="sidebar-logo" alt="Trivia SAF">
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-dev">
+      <span class="sidebar-dev-label">Trocar Perfil</span>
+      <select id="dev-perfil-select" class="sidebar-dev-select">
+        <option value="">— selecione um perfil —</option>
+        <option value="SOLICITANTE">Solicitante</option>
+        <option value="CCM">CCM</option>
+        <option value="ADMIN">Administrador</option>
+      </select>
+    </div>
+    <button class="sidebar-logout" id="sidebar-logout">&#x2192; Sair</button>
+  </div>
+</aside>
 
 <!-- ===================== CONTENT ===================== -->
 <main>

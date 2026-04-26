@@ -3,133 +3,458 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login – SAF Sistema de Abertura de Falhas</title>
+  <title>Acesso &ndash; SAF Trivia</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/saf.css') }}">
+  <style>
+    /* ── Page layout ───────────────────────────────── */
+    html, body { overflow: hidden; }
+    body { background: var(--surface); }
+    .login-wrap {
+      min-height: calc(100vh - var(--toolbar-h));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Card ──────────────────────────────────────── */
+    .auth-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 8px 40px rgba(27,42,94,.10);
+      width: 100%;
+      max-width: 520px;
+      padding: 2rem 2.25rem 2.25rem;
+    }
+
+    /* ── Tab switcher ──────────────────────────────── */
+    .auth-tabs {
+      display: inline-flex;
+      gap: 4px;
+      background: var(--surface);
+      border-radius: 99px;
+      padding: 5px;
+      margin-bottom: 1.75rem;
+    }
+    .auth-tab {
+      padding: .6rem 1.75rem;
+      border-radius: 99px;
+      border: none;
+      font-size: .92rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .18s, color .18s, box-shadow .18s;
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .auth-tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(232,92,17,.40);
+    }
+
+    /* ── Panel headings ────────────────────────────── */
+    .auth-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0 0 .2rem;
+    }
+    .auth-subtitle {
+      font-size: .88rem;
+      color: var(--text-muted);
+      margin: 0 0 1.4rem;
+    }
+
+    /* ── Field group ────────────────────────────────── */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: .28rem;
+      margin-bottom: .95rem;
+    }
+    .field-label {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .field-input {
+      display: block;
+      width: 100%;
+      padding: .7rem 1rem;
+      font-size: .93rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      box-sizing: border-box;
+    }
+    .field-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(27,42,94,.09);
+      background: var(--bg);
+    }
+    .field-input::placeholder { color: var(--text-light); }
+    .field-input.is-invalid   { border-color: var(--danger) !important; }
+    .field-error {
+      font-size: .74rem;
+      color: var(--danger);
+      display: none;
+    }
+    .field-input.is-invalid ~ .field-error,
+    span.field-error.visible { display: block; }
+
+    /* Eye toggle */
+    .field-pw { position: relative; }
+    .field-pw .field-input { padding-right: 2.5rem; }
+    .field-pw .eye-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1rem;
+      padding: 2px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .field-pw .eye-btn:hover { color: var(--text); }
+
+    /* Dropdown with orange arrow */
+    select.field-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23E85C11' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .85rem center;
+      padding-right: 2.25rem;
+    }
+
+    /* ── Forgot link ───────────────────────────────── */
+    .forgot-row {
+      text-align: right;
+      margin: -.3rem 0 1.25rem;
+    }
+    .forgot-link {
+      font-size: .8rem;
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    /* ── Submit buttons ────────────────────────────── */
+    .auth-submit {
+      width: 100%;
+      padding: .9rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, box-shadow .15s;
+      margin-top: .5rem;
+    }
+    .auth-submit:hover   { background: #cf4f0a; box-shadow: 0 4px 16px rgba(232,92,17,.3); }
+    .auth-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── 2-column field grid ───────────────────────── */
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 1rem;
+    }
+    .field-grid .full { grid-column: 1 / -1; }
+
+    /* ── Inline alert ──────────────────────────────── */
+    .auth-alert {
+      display: none;
+      align-items: flex-start;
+      gap: .6rem;
+      padding: .75rem 1rem;
+      border-radius: 8px;
+      font-size: .84rem;
+      margin-bottom: 1.25rem;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: #991B1B;
+    }
+    .auth-alert.visible { display: flex; }
+  </style>
 </head>
 <body>
-<div class="login-page">
-  <div class="login-card">
-    <!-- Logo -->
-    <img src="{{ url_for('static', filename='logo.png') }}"
-         class="login-logo" alt="Trivia SAF">
 
-    <p class="login-title">Acesso ao Sistema</p>
-    <p class="login-subtitle">Entre com suas credenciais corporativas</p>
+<!-- ── Toolbar (simplified – no user/nav section) ── -->
+<header class="toolbar">
+  <div class="toolbar-top">
+    <div class="toolbar-brand">
+      <span class="toolbar-title">Trivia SAF</span>
+    </div>
+    <div class="toolbar-user">
+      <img src="{{ url_for('static', filename='logo.png') }}"
+           class="toolbar-logo" alt="Trivia SAF">
+    </div>
+  </div>
+</header><!-- no toolbar-nav on login page -->
 
-    <!-- Error alert (hidden initially) -->
-    <div id="login-error" class="alert alert-danger hidden" role="alert">
-      <span class="alert-icon">⚠️</span>
-      <span id="login-error-msg">Credenciais inválidas.</span>
+<!-- ── Centred card ── -->
+<div class="login-wrap">
+  <div class="auth-card">
+
+    <!-- Tab switcher -->
+    <div class="auth-tabs" id="auth-tabs">
+      <button class="auth-tab active" data-panel="panel-login"    type="button">Entrar</button>
+      <button class="auth-tab"        data-panel="panel-cadastro" type="button">Cadastrar</button>
     </div>
 
-    <!-- Form -->
-    <form id="login-form" novalidate>
-      <div class="form-group mb-3">
-        <label class="form-label" for="email">
-          E-mail corporativo <span class="required">*</span>
-        </label>
-        <input type="email" id="email" name="email"
-               class="form-control" placeholder="seu@email.com"
-               required autocomplete="username">
-        <span class="form-error">Informe um e-mail válido.</span>
+    <!-- ══════════════════════════════════════════════
+         PANEL: ENTRAR
+    ══════════════════════════════════════════════ -->
+    <div id="panel-login">
+      <p class="auth-title">Acesse o sistema</p>
+
+      <div class="auth-alert" id="login-error">
+        <span>&#9888;&#65039;</span>
+        <span id="login-error-msg">Credenciais inválidas.</span>
       </div>
 
-      <div class="form-group mb-4">
-        <label class="form-label" for="senha">
-          Senha <span class="required">*</span>
-        </label>
-        <div style="position:relative;">
-          <input type="password" id="senha" name="senha"
-                 class="form-control" placeholder="••••••••"
-                 required autocomplete="current-password"
-                 style="padding-right:2.5rem;">
-          <button type="button" id="toggle-senha"
-                  style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);font-size:1rem;padding:2px 4px;"
-                  aria-label="Mostrar/ocultar senha">👁</button>
+      <form id="login-form" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="login-email">E-mail corporativo</label>
+          <input type="email" id="login-email" class="field-input"
+                 placeholder="seu@triviatrens.com.br"
+                 autocomplete="username" required>
+          <span class="field-error">Informe um e-mail válido.</span>
         </div>
-        <span class="form-error">Informe a senha.</span>
+
+        <div class="field-group">
+          <label class="field-label" for="login-senha">Senha</label>
+          <div class="field-pw">
+            <input type="password" id="login-senha" class="field-input"
+                   placeholder="••••••••"
+                   autocomplete="current-password" required>
+            <button type="button" class="eye-btn" data-target="login-senha"
+                    aria-label="Mostrar/ocultar senha">&#128065;</button>
+          </div>
+          <span class="field-error">Informe a senha.</span>
+        </div>
+
+        <div class="forgot-row">
+          <a href="#" class="forgot-link">Esqueci minha senha</a>
+        </div>
+
+        <button type="submit" class="auth-submit" id="btn-login">Entrar</button>
+      </form>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PANEL: CADASTRAR
+    ══════════════════════════════════════════════ -->
+    <div id="panel-cadastro" style="display:none;">
+      <p class="auth-title">Crie sua conta</p>
+      <p class="auth-subtitle">Preencha os dados para solicitar acesso</p>
+
+      <div class="auth-alert" id="cad-error">
+        <span>&#9888;&#65039;</span>
+        <span id="cad-error-msg">Erro ao cadastrar. Tente novamente.</span>
       </div>
 
-      <button type="submit" id="btn-login" class="btn btn-primary btn-lg btn-block">
-        Entrar
-      </button>
-    </form>
+      <form id="cad-form" novalidate>
+        <div class="field-grid">
+          <div class="field-group full">
+            <label class="field-label" for="cad-nome">Nome completo</label>
+            <input type="text" id="cad-nome" class="field-input"
+                   placeholder="Maria da Silva" required autocomplete="name">
+            <span class="field-error">Informe seu nome completo.</span>
+          </div>
 
-    <p class="login-footer">
-      Problemas de acesso? Contate o suporte de TI.<br>
-      <span style="color:var(--text-light);">SAF v1.0 &mdash; Trivia &copy; 2025</span>
-    </p>
-  </div>
-</div>
+          <div class="field-group">
+            <label class="field-label" for="cad-email">E-mail corporativo</label>
+            <input type="email" id="cad-email" class="field-input"
+                   placeholder="voce@empresa.com" required autocomplete="email">
+            <span class="field-error">E-mail inválido.</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="cad-empresa">Empresa</label>
+            <select id="cad-empresa" class="field-input" required>
+              <option value="">Selecione...</option>
+              <option value="TRIVIA">Trivia Trens</option>
+              <option value="TIC">Tic Trens</option>
+              <option value="METROBH">Metrô BH</option>
+              <option value="GOCIL">Gocil</option>
+            </select>
+            <span class="field-error">Selecione a empresa.</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="cad-area">Área ou setor</label>
+            <select id="cad-area" class="field-input" required>
+              <option value="">Selecione...</option>
+              <option value="MANUTENCAO">Manutenção</option>
+              <option value="OPERACAO">Operação</option>
+              <option value="ENGENHARIA">Engenharia</option>
+              <option value="TI">TI</option>
+              <option value="SEGURANCA">Segurança</option>
+              <option value="LIMPEZA">Limpeza e conservação</option>
+            </select>
+            <span class="field-error">Selecione a área.</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="cad-senha">Senha</label>
+            <div class="field-pw">
+              <input type="password" id="cad-senha" class="field-input"
+                     placeholder="••••••••" required>
+              <button type="button" class="eye-btn" data-target="cad-senha"
+                      aria-label="Mostrar/ocultar senha">&#128065;</button>
+            </div>
+            <span class="field-error">Informe a senha.</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="cad-confirma">Confirme a senha</label>
+            <div class="field-pw">
+              <input type="password" id="cad-confirma" class="field-input"
+                     placeholder="••••••••" required>
+              <button type="button" class="eye-btn" data-target="cad-confirma"
+                      aria-label="Mostrar/ocultar senha">&#128065;</button>
+            </div>
+            <span class="field-error" id="cad-confirma-err">As senhas não coincidem.</span>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-submit" id="btn-cadastrar">Cadastrar</button>
+      </form>
+    </div>
+
+  </div><!-- /auth-card -->
+</div><!-- /login-wrap -->
 
 <div id="toast-container"></div>
 <script src="{{ url_for('static', filename='js/saf.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // Se já estiver logado, redirecionar
   Auth.redirectIfLoggedIn();
 
-  const form    = document.getElementById('login-form');
-  const btnLogin = document.getElementById('btn-login');
-  const errBox  = document.getElementById('login-error');
-  const errMsg  = document.getElementById('login-error-msg');
-
-  // Toggle password visibility
-  document.getElementById('toggle-senha').addEventListener('click', function () {
-    const input = document.getElementById('senha');
-    input.type = input.type === 'password' ? 'text' : 'password';
+  /* ── Tab switching ─────────────────────────────── */
+  document.getElementById('auth-tabs').addEventListener('click', function (e) {
+    const btn = e.target.closest('.auth-tab');
+    if (!btn) return;
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const target = btn.dataset.panel;
+    document.getElementById('panel-login').style.display    = target === 'panel-login'    ? '' : 'none';
+    document.getElementById('panel-cadastro').style.display = target === 'panel-cadastro' ? '' : 'none';
   });
 
-  function showError(msg) {
-    errMsg.textContent = msg;
-    errBox.classList.remove('hidden');
-  }
-  function hideError() {
-    errBox.classList.add('hidden');
+  /* ── Eye toggles ───────────────────────────────── */
+  document.querySelectorAll('.eye-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const inp = document.getElementById(this.dataset.target);
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+  });
+
+  /* ── LOGIN ─────────────────────────────────────── */
+  const loginAlert = document.getElementById('login-error');
+  const loginMsg   = document.getElementById('login-error-msg');
+
+  function showLoginError(msg) {
+    loginMsg.textContent = msg;
+    loginAlert.classList.add('visible');
   }
 
-  form.addEventListener('submit', async function (e) {
+  document.getElementById('login-form').addEventListener('submit', async function (e) {
     e.preventDefault();
-    hideError();
+    loginAlert.classList.remove('visible');
 
-    const email = document.getElementById('email').value.trim();
-    const senha = document.getElementById('senha').value;
+    const email = document.getElementById('login-email').value.trim();
+    const senha = document.getElementById('login-senha').value;
+    if (!email || !senha) { validateForm(this); return; }
 
-    if (!email || !senha) {
-      validateForm(form);
-      return;
-    }
-
-    setLoading(btnLogin, true, 'Entrando...');
-
+    const btn = document.getElementById('btn-login');
+    setLoading(btn, true, 'Entrando...');
     const res = await API.login(email, senha);
-
-    setLoading(btnLogin, false, 'Entrar');
+    setLoading(btn, false, 'Entrar');
 
     if (!res.ok) {
-      showError(res.data.erro || 'Credenciais inválidas. Verifique e tente novamente.');
+      // 403 = cadastrado mas aguardando aprovação do administrador
+      if (res.status === 403) {
+        showLoginError(res.data.erro || 'Acesso pendente. Aguarde a aprovação do administrador.');
+      } else {
+        showLoginError(res.data.erro || 'Credenciais inválidas. Verifique e tente novamente.');
+      }
       return;
     }
 
-    // Salva sessão
-    Auth.setUser({
-      id:     res.data.id,
-      nome:   res.data.nome,
-      perfil: res.data.perfil,
-    });
-
-    // Redirecionar por perfil
-    const dest = {
-      SOLICITANTE: '/minhas-safs',
-      CCM:         '/fila-ccm',
-      ADMIN:       '/admin',
-    };
+    Auth.setUser({ id: res.data.id, nome: res.data.nome, perfil: res.data.perfil,
+                   empresa: res.data.empresa, area: res.data.area });
+    const dest = { SOLICITANTE: '/minhas-safs', CCM: '/fila-ccm', ADMIN: '/admin' };
     window.location.href = dest[res.data.perfil] || '/minhas-safs';
   });
 
-  // Limpar erro ao digitar
-  ['email','senha'].forEach(id => {
-    document.getElementById(id).addEventListener('input', hideError);
+  ['login-email', 'login-senha'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', function () {
+      loginAlert.classList.remove('visible');
+    });
+  });
+
+  /* ── CADASTRO ──────────────────────────────────── */
+  const cadAlert = document.getElementById('cad-error');
+  const cadMsg   = document.getElementById('cad-error-msg');
+
+  function showCadError(msg) {
+    cadMsg.textContent = msg;
+    cadAlert.classList.add('visible');
+  }
+
+  document.getElementById('cad-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    cadAlert.classList.remove('visible');
+
+    const nome     = document.getElementById('cad-nome').value.trim();
+    const email    = document.getElementById('cad-email').value.trim();
+    const empresa  = document.getElementById('cad-empresa').value;
+    const area     = document.getElementById('cad-area').value;
+    const senha    = document.getElementById('cad-senha').value;
+    const confirma = document.getElementById('cad-confirma').value;
+
+    if (!nome || !email || !empresa || !area || !senha || !confirma) {
+      showCadError('Preencha todos os campos obrigatórios.');
+      return;
+    }
+    if (senha !== confirma) {
+      document.getElementById('cad-confirma').classList.add('is-invalid');
+      document.getElementById('cad-confirma-err').style.display = 'block';
+      return;
+    }
+    document.getElementById('cad-confirma').classList.remove('is-invalid');
+    document.getElementById('cad-confirma-err').style.display = 'none';
+
+    const btn = document.getElementById('btn-cadastrar');
+    setLoading(btn, true, 'Cadastrando...');
+    const res = await API.post('/auth/cadastro', { nome, email, empresa, area, senha });
+    setLoading(btn, false, 'Cadastrar');
+
+    if (res.ok) {
+      Toast.success('Solicitação enviada! Aguarde aprovação do administrador.');
+      this.reset();
+      document.querySelector('[data-panel="panel-login"]').click();
+    } else {
+      showCadError(res.data.erro || 'Erro ao cadastrar. Tente novamente.');
+    }
   });
 });
 </script>

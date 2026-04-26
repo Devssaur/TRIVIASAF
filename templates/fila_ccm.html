@@ -3,215 +3,587 @@
 {% block title %}Fila CCM{% endblock %}
 
 {% block toolbar_nav %}
-<a href="/fila-ccm"   class="nav-tab active">Fila de Análise</a>
-<a href="/relatorio-ccm" class="nav-tab">Relatório Global</a>
+<a href="/fila-ccm" class="nav-tab active">Fila de Análise</a>
 {% endblock %}
 
 {% block content %}
-<div class="page-wrapper">
+<div class="page-wrapper ccm-wrapper">
 
   <div class="page-header">
     <div>
-      <p class="page-title">Gestão de Falhas – CCM</p>
-      <p class="page-subtitle">Analise, confirme ou solicite complemento para cada solicitação.</p>
+      <p class="page-title">Fila de Análise do CCM-E</p>
     </div>
+    <button class="btn btn-outline" id="btn-refresh">&#8635; Atualizar</button>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-grid" id="stats-grid">
-    <div class="stat-card accent">
-      <div class="stat-value" id="s-abertas">—</div>
-      <div class="stat-label">Pendentes</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="s-em_analise" style="color:var(--info);">—</div>
-      <div class="stat-label">Em Análise</div>
-    </div>
-    <div class="stat-card success">
-      <div class="stat-value" id="s-aprovadas">—</div>
-      <div class="stat-label">Confirmadas Hoje</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="s-total">—</div>
-      <div class="stat-label">Total</div>
-    </div>
-  </div>
-
-  <!-- Filter + Search -->
+  <!-- Filter tabs -->
   <div class="filter-bar">
-    <button class="filter-tab active" data-filter="TODAS">
-      Todas <span class="fcount" id="fc-todas">0</span>
-    </button>
-    <button class="filter-tab" data-filter="ABERTA">
-      Pendente CCM <span class="fcount" id="fc-aberta">0</span>
-    </button>
-    <button class="filter-tab" data-filter="EM_ANALISE">
-      Em Análise <span class="fcount" id="fc-em_analise">0</span>
-    </button>
-    <button class="filter-tab" data-filter="DEVOLVIDA">
-      Devolvidas <span class="fcount" id="fc-devolvida">0</span>
-    </button>
-    <button class="filter-tab" data-filter="APROVADA">
-      Confirmadas <span class="fcount" id="fc-aprovada">0</span>
-    </button>
-    <div style="flex:1;min-width:150px;">
-      <input type="search" id="search-input" class="form-control"
-             placeholder="🔍  Buscar por ticket, equipamento ou notificador..." style="height:34px;font-size:.82rem;">
-    </div>
+    <button class="filter-tab active" data-filter="PENDENTES">Pendentes</button>
+    <button class="filter-tab" data-filter="TODAS">Todas</button>
+    <button class="filter-tab" data-filter="APROVADA">Aprovadas</button>
   </div>
 
-  <!-- Table -->
-  <div class="table-wrapper" id="table-container">
+  <!-- Equipment filter -->
+  <div class="equip-filter-bar">
+    <label class="equip-filter-label" for="equip-filter">&#9874; Equipamento</label>
+    <select id="equip-filter" class="equip-filter-select">
+      <option value="">Todos os equipamentos</option>
+    </select>
+  </div>
+
+  <!-- Queue -->
+  <div id="ccm-queue">
     <div class="spinner-center"><div class="spinner"></div></div>
   </div>
 
 </div>
+
+<style>
+/* ---- CCM Queue: grouped card layout ---- */
+.ccm-group { margin-bottom: 1.75rem; }
+
+.ccm-group-header {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .6rem 1rem;
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-weight: 700;
+  font-size: .88rem;
+}
+.ccm-gcount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  background: rgba(255,255,255,.18);
+  border-radius: 99px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.ccm-gcount.pend { background: rgba(232,92,17,.85); }
+
+.ccm-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-top: none;
+  background: var(--bg);
+  transition: background var(--trans);
+}
+.ccm-card:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.ccm-card + .ccm-card { border-top: 1px solid var(--border-lt); }
+.ccm-card:hover { background: var(--surface); }
+
+/* Left: ticket + badges */
+.ccm-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .35rem;
+  width: 110px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+/* Photo thumbnail */
+.ccm-card-photo {
+  width: 90px;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ccm-photo-img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: block;
+  transition: opacity var(--trans);
+}
+.ccm-photo-img:hover { opacity: .82; }
+.ccm-photo-placeholder {
+  width: 90px;
+  height: 90px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 1.4rem;
+  color: var(--text-light);
+  text-align: center;
+}
+.ccm-photo-placeholder span { font-size: .68rem; color: var(--text-light); }
+/* Notificador name + area */
+.ccm-notificador {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: .4rem;
+}
+.ccm-notif-nome {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.ccm-notif-area {
+  font-size: .74rem;
+  color: var(--text-muted);
+  padding-left: 1.3em;
+}
+.ccm-ticket {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* Center: content */
+.ccm-card-content {
+  flex: 1;
+  min-width: 0;
+}
+.ccm-title {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: .2rem;
+}
+.ccm-desc {
+  font-size: .84rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: .5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ccm-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .75rem;
+  font-size: .78rem;
+  color: var(--text-muted);
+  align-items: center;
+}
+.ccm-motivo-box {
+  font-size: .8rem;
+  color: #92400e;
+  background: #fffbeb;
+  border-left: 3px solid var(--warning);
+  padding: .35rem .6rem;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin-top: .5rem;
+  font-style: italic;
+}
+
+/* Right: actions */
+.ccm-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  min-width: 130px;
+  flex-shrink: 0;
+  align-items: stretch;
+}
+.ccm-recusa-form {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  min-width: 200px;
+}
+.ccm-recusa-form textarea {
+  width: 100%;
+  min-height: 60px;
+  font-size: .82rem;
+  padding: .35rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  resize: vertical;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  background: var(--bg);
+}
+.ccm-recusa-form textarea:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+}
+
+/* SAP badge variants */
+.badge-sap-sim {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  font-size: .72rem;
+}
+.badge-sap-nao {
+  background: var(--surface);
+  color: var(--text-light);
+  border: 1px solid var(--border);
+  font-size: .72rem;
+}
+.badge-sap-sim.clickable,
+.badge-sap-nao.clickable {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity var(--trans);
+}
+.badge-sap-sim.clickable:hover,
+.badge-sap-nao.clickable:hover { opacity: .72; }
+
+/* Equipment filter bar */
+.equip-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  margin-top: .5rem;
+  margin-bottom: .25rem;
+}
+.equip-filter-label {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.equip-filter-select {
+  padding: .3rem .65rem;
+  font-size: .84rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  min-width: 220px;
+}
+.equip-filter-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb),.12);
+}
+</style>
 {% endblock %}
 
 {% block page_script %}
 <script>
-document.addEventListener('DOMContentLoaded', async function () {
-  const user = Auth.requireAuth(['CCM']);
-  if (!user) return;
+(function () {
+  let allSafs      = [];
+  let activeFilter = 'PENDENTES';
+  let activeEquip  = '';
 
-  // Solicita localização + notificações (tela inicial do CCM)
-  Permissions.requestAll();
-
-  let allSafs = [];
-  let activeFilter = 'TODAS';
-  let searchTerm = '';
-
-  const res = await API.filaCCM();
-
-  if (!res.ok) {
-    document.getElementById('table-container').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">⚠️</div>
-        <p class="empty-state-title">Erro ao carregar fila</p>
-        <p class="empty-state-text">${res.data.erro || 'Tente novamente.'}</p>
-      </div>`;
-    return;
+  // ───────── Stats ─────────
+  function updateStats() {
+    const c = { ABERTA: 0, APROVADA: 0, DEVOLVIDA: 0 };
+    allSafs.forEach(s => { if (c[s.status] !== undefined) c[s.status]++; });
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('s-pendentes',  c.ABERTA);
+    set('s-aprovadas',  c.APROVADA);
+    set('s-devolvidas', c.DEVOLVIDA);
+    set('s-total',      allSafs.length);
+    set('ccm-subtitle',
+      c.ABERTA > 0
+        ? `${c.ABERTA} solicitação(ões) aguardando avaliação`
+        : 'Nenhuma solicitação pendente');
   }
 
-  // A rota /ccm/pendentes retorna array de controle com saf_solicitacoes embutido
-  allSafs = res.data || [];
-
-  function getStatus(item) { return item.status || 'ABERTA'; }
-  function getSaf(item)    { return item.saf_solicitacoes || {}; }
-  function getTicket(item) { return getSaf(item).ticket_saf || item.solicitacao_id?.substring(0,8); }
-
-  // ── Counters ──────────────────────────────────────
-  function updateCounters() {
-    const c = { ABERTA: 0, EM_ANALISE: 0, DEVOLVIDA: 0, APROVADA: 0, CANCELADA: 0 };
-    allSafs.forEach(s => { const st = getStatus(s); if (c[st] !== undefined) c[st]++; });
-    document.getElementById('s-abertas').textContent   = c.ABERTA;
-    document.getElementById('s-em_analise').textContent= c.EM_ANALISE;
-    document.getElementById('s-aprovadas').textContent = c.APROVADA;
-    document.getElementById('s-total').textContent     = allSafs.length;
-    document.getElementById('fc-todas').textContent    = allSafs.length;
-    document.getElementById('fc-aberta').textContent   = c.ABERTA;
-    document.getElementById('fc-em_analise').textContent= c.EM_ANALISE;
-    document.getElementById('fc-devolvida').textContent= c.DEVOLVIDA;
-    document.getElementById('fc-aprovada').textContent = c.APROVADA;
+  // ───────── Filter ─────────
+  function getFiltered() {
+    let items = allSafs;
+    if (activeFilter === 'PENDENTES') items = items.filter(s => s.status === 'ABERTA');
+    else if (activeFilter === 'APROVADA')  items = items.filter(s => s.status === 'APROVADA');
+    if (activeEquip) items = items.filter(s => (s.saf_solicitacoes?.equipamento || '') === activeEquip);
+    return items;
   }
 
-  // ── Render ────────────────────────────────────────
-  function renderTable() {
-    let filtered = allSafs;
+  function populateEquipFilter() {
+    const sel = document.getElementById('equip-filter');
+    if (!sel) return;
+    const equips = [...new Set(allSafs.map(s => s.saf_solicitacoes?.equipamento || '').filter(Boolean))].sort();
+    sel.innerHTML = `<option value="">Todos os equipamentos</option>` +
+      equips.map(e => `<option value="${e}">${e}</option>`).join('');
+    if (equips.includes(activeEquip)) sel.value = activeEquip;
+    else activeEquip = '';
+  }
 
-    if (activeFilter !== 'TODAS') {
-      filtered = filtered.filter(s => getStatus(s) === activeFilter);
-    }
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      filtered = filtered.filter(s => {
-        const saf = getSaf(s);
-        return (
-          String(getTicket(s)).toLowerCase().includes(q) ||
-          (saf.equipamento || '').toLowerCase().includes(q) ||
-          (saf.titulo_falha || '').toLowerCase().includes(q) ||
-          (saf.notificador_nome || '').toLowerCase().includes(q)
-        );
-      });
-    }
+  // ───────── Render ─────────
+  function renderQueue() {
+    const container = document.getElementById('ccm-queue');
+    const items = getFiltered();
 
-    const container = document.getElementById('table-container');
-    if (filtered.length === 0) {
+    if (items.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">📭</div>
+          <div class="empty-state-icon">&#128235;</div>
           <p class="empty-state-title">Nenhuma solicitação</p>
-          <p class="empty-state-text">Não há itens correspondentes ao filtro selecionado.</p>
+          <p class="empty-state-text">Não há itens para o filtro selecionado.</p>
         </div>`;
       return;
     }
 
-    const rows = filtered.map(item => {
-      const saf    = getSaf(item);
-      const status = getStatus(item);
-      const ticket = getTicket(item);
-      const sapNota = saf.sap_qmnum ? `<span class="font-mono" style="font-size:.78rem;">${saf.sap_qmnum}</span>` : '<span class="text-muted text-xs">Pendente</span>';
-      const sapIndicator = saf.sap_qmnum
-        ? `<span class="sap-indicator sim">✔ Sim</span>`
-        : `<span class="sap-indicator nao">– Não</span>`;
-      return `
-        <tr class="clickable" onclick="window.location.href='/avaliar-saf/${item.solicitacao_id}'">
-          <td>${Fmt.ticket(ticket)}</td>
-          <td>${sapNota}</td>
-          <td>${Fmt.statusBadge(status)}</td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${saf.titulo_falha || '—'}</td>
-          <td class="text-muted text-sm">${saf.equipamento || '—'}</td>
-          <td>${Fmt.prioBadge(saf.prioridade || 'MEDIA')}</td>
-          <td class="text-muted text-sm">${saf.notificador_nome || '—'}</td>
-          <td>${sapIndicator}</td>
-          <td class="text-muted text-sm">${Fmt.date(item.criado_em)}</td>
-          <td>
-            <a href="/avaliar-saf/${item.solicitacao_id}"
-               class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
-              Avaliar
-            </a>
-          </td>
-        </tr>`;
-    }).join('');
+    // Group by equipment
+    const groups = new Map();
+    items.forEach(item => {
+      const key = (item.saf_solicitacoes && item.saf_solicitacoes.equipamento) || 'Sem Equipamento';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    });
 
-    container.innerHTML = `
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Ticket SAF</th>
-            <th>Nº Nota SAP</th>
-            <th>Status</th>
-            <th>Descrição</th>
-            <th>Equipamento</th>
-            <th>Prioridade</th>
-            <th>Notificador</th>
-            <th>Nota Criada</th>
-            <th>Data</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+    // Sort: groups with most pending first
+    const sorted = [...groups.entries()].sort(([, a], [, b]) => {
+      const pa = a.filter(x => x.status === 'ABERTA').length;
+      const pb = b.filter(x => x.status === 'ABERTA').length;
+      return pb - pa;
+    });
+
+    container.innerHTML = sorted.map(([equip, list]) => renderGroup(equip, list)).join('');
   }
 
-  // ── Events ────────────────────────────────────────
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    tab.addEventListener('click', function () {
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
-      activeFilter = this.dataset.filter;
-      renderTable();
+  function renderGroup(equip, items) {
+    const pend = items.filter(x => x.status === 'ABERTA').length;
+    const pendBadge = pend > 0
+      ? `<span class="ccm-gcount pend">${pend} pendente${pend > 1 ? 's' : ''}</span>`
+      : '';
+    return `
+      <div class="ccm-group">
+        <div class="ccm-group-header">
+          <span>&#9874; ${equip}</span>
+          ${pendBadge}
+          <span class="ccm-gcount">${items.length} total</span>
+        </div>
+        ${items.map(renderCard).join('')}
+      </div>`;
+  }
+
+  function renderCard(item) {
+    const saf    = item.saf_solicitacoes || {};
+    const id     = item.solicitacao_id;
+    const status = item.status;
+    const sapOk  = item.atualizado_sap;
+    const ticket = saf.ticket_saf ? `#${saf.ticket_saf}` : `#${id.substring(0, 6).toUpperCase()}`;
+
+    // SAP badge — clickable only for approved records
+    const sapClickable = (status === 'APROVADA') ? ' clickable' : '';
+    const sapOnclick   = (status === 'APROVADA')
+      ? `onclick="window._ccmToggleSap('${id}', ${sapOk})"` : '';
+    const sapTitle = (status === 'APROVADA')
+      ? (sapOk ? 'SAP atualizado – clique para desfazer' : 'Clique para marcar SAP como atualizado')
+      : (sapOk ? 'SAP atualizado' : 'SAP ainda não atualizado');
+    const sapBadge = sapOk
+      ? `<span class="badge badge-sap-sim${sapClickable}" ${sapOnclick} title="${sapTitle}">&#10004; SAP</span>`
+      : `<span class="badge badge-sap-nao${sapClickable}" ${sapOnclick} title="${sapTitle}">&#10006; SAP</span>`;
+
+    // Meta info row
+    const metaParts = [];
+    if (saf.local_instalacao) metaParts.push(`&#128205; ${saf.local_instalacao}`);
+    metaParts.push(Fmt.prioBadge(saf.prioridade || 'MEDIA'));
+    if (saf.data_inicio_avaria) {
+      const [ano, mes, dia] = saf.data_inicio_avaria.split('-');
+      const hora = saf.hora_inicio_avaria ? saf.hora_inicio_avaria.substring(0,5) : '';
+      const dtHtml = hora
+        ? `<span style="display:inline-flex;flex-direction:column;line-height:1.25;">
+             <span>&#128336; ${dia}/${mes}/${ano}</span>
+             <span style="font-size:.72rem;color:var(--text-light);padding-left:1.1em;">${hora}</span>
+           </span>`
+        : `<span>&#128336; ${dia}/${mes}/${ano}</span>`;
+      metaParts.push(dtHtml);
+    }
+    if (item.data_avaliacao) metaParts.push(`&#128197; ${Fmt.datetime(item.data_avaliacao)}`);
+
+    // Action buttons
+    let actionsHtml;
+    if (status === 'ABERTA') {
+      actionsHtml = `
+        <button class="btn btn-success btn-sm" onclick="window._ccmAceitar('${id}')">&#10003; Aceitar</button>
+        <button class="btn btn-danger btn-sm" onclick="window._ccmRecusar('${id}')">&#10007; Recusar</button>`;
+    } else if (status === 'APROVADA') {
+      actionsHtml = `<span style="font-size:.8rem;color:var(--green);font-weight:600;">&#10004; Aprovada</span>`;
+    } else if (status === 'DEVOLVIDA') {
+      actionsHtml = `<span style="font-size:.8rem;color:var(--warning);font-weight:600;">&#8617; Devolvida</span>`;
+    } else {
+      actionsHtml = Fmt.statusBadge(status);
+    }
+
+    // Motivo devolução
+    const motivoHtml = (status === 'DEVOLVIDA' && item.motivo_devolucao)
+      ? `<div class="ccm-motivo-box">&#8617; <em>Motivo:</em> ${item.motivo_devolucao}</div>`
+      : '';
+
+    return `
+      <div class="ccm-card" id="card-${id}">
+        <div class="ccm-card-meta">
+          <span class="ccm-ticket">${ticket}</span>
+          ${sapBadge}
+        </div>
+        <div class="ccm-card-photo">
+          ${saf.anexo_evidencia_url
+            ? `<a href="${saf.anexo_evidencia_url}" target="_blank" rel="noopener" title="Ver foto em tamanho original">
+                 <img src="${saf.anexo_evidencia_url}" class="ccm-photo-img" alt="Evidência" loading="lazy">
+               </a>`
+            : `<div class="ccm-photo-placeholder">&#128247;<br><span>Sem foto</span></div>`
+          }
+        </div>
+        <div class="ccm-card-content">
+          <div class="ccm-title">${saf.titulo_falha || '—'}</div>
+          ${saf.descricao_longa ? `<div class="ccm-desc">${saf.descricao_longa}</div>` : ''}          ${saf.notificador_nome ? `<div class="ccm-notificador"><span class="ccm-notif-nome">&#128100; ${saf.notificador_nome}</span>${saf.notificador_area ? `<span class="ccm-notif-area">${saf.notificador_area}</span>` : ''}</div>` : ''}          <div class="ccm-meta-row">
+            ${metaParts.map(p => `<span>${p}</span>`).join('')}
+          </div>
+          ${motivoHtml}
+        </div>
+        <div class="ccm-card-actions" id="actions-${id}">
+          ${actionsHtml}
+        </div>
+      </div>`;
+  }
+
+  // ───────── Actions ─────────
+  async function aceitar(id) {
+    const user = Auth.getUser();
+    const actDiv = document.getElementById('actions-' + id);
+    if (actDiv) actDiv.innerHTML = `<div class="spinner" style="width:18px;height:18px;"></div>`;
+
+    const res = await API.avaliarSaf(id, { status: 'APROVADA', avaliador_id: user?.id });
+    if (!res.ok) {
+      Toast.error(res.data.erro || 'Erro ao aceitar a SAF.');
+      renderQueue();
+      return;
+    }
+    const item = allSafs.find(s => s.solicitacao_id === id);
+    if (item) item.status = 'APROVADA';
+    updateStats();
+    renderQueue();
+    Toast.success('SAF aceita com sucesso!');
+  }
+
+  function mostrarRecusa(id) {
+    const actDiv = document.getElementById('actions-' + id);
+    if (!actDiv) return;
+    actDiv.innerHTML = `
+      <div class="ccm-recusa-form">
+        <textarea id="motivo-${id}" placeholder="Motivo da recusa (obrigatório)…"></textarea>
+        <button class="btn btn-danger btn-sm" onclick="window._ccmConfirmarRecusa('${id}')">Confirmar</button>
+        <button class="btn btn-ghost btn-sm" onclick="window._ccmRenderQueue()">Cancelar</button>
+      </div>`;
+    document.getElementById('motivo-' + id)?.focus();
+  }
+
+  async function confirmarRecusa(id) {
+    const motivo = (document.getElementById('motivo-' + id)?.value || '').trim();
+    if (!motivo) { Toast.warning('Informe o motivo da recusa.'); return; }
+
+    const user = Auth.getUser();
+    const res  = await API.avaliarSaf(id, {
+      status: 'DEVOLVIDA',
+      motivo_devolucao: motivo,
+      avaliador_id: user?.id
     });
-  });
+    if (!res.ok) {
+      Toast.error(res.data.erro || 'Erro ao recusar a SAF.');
+      return;
+    }
+    const item = allSafs.find(s => s.solicitacao_id === id);
+    if (item) { item.status = 'DEVOLVIDA'; item.motivo_devolucao = motivo; }
+    updateStats();
+    renderQueue();
+    Toast.success('SAF devolvida ao solicitante.');
+  }
 
-  let searchTimer;
-  document.getElementById('search-input').addEventListener('input', function () {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { searchTerm = this.value.trim(); renderTable(); }, 220);
-  });
+  async function recusar(id) {
+    const user = Auth.getUser();
+    const actDiv = document.getElementById('actions-' + id);
+    if (actDiv) actDiv.innerHTML = `<div class="spinner" style="width:18px;height:18px;"></div>`;
 
-  updateCounters();
-  renderTable();
-});
+    const res = await API.avaliarSaf(id, { status: 'DEVOLVIDA', avaliador_id: user?.id });
+    if (!res.ok) {
+      Toast.error(res.data.erro || 'Erro ao recusar a SAF.');
+      renderQueue();
+      return;
+    }
+    // Remove o item da lista local (recusadas não aparecem na fila)
+    allSafs = allSafs.filter(s => s.solicitacao_id !== id);
+    updateStats();
+    populateEquipFilter();
+    renderQueue();
+    Toast.success('SAF devolvida ao solicitante.');
+  }
+
+  async function toggleSap(id, currentVal) {
+    const novoValor = !currentVal;
+    const res = await API.toggleSap(id, novoValor);
+    if (!res.ok) { Toast.error(res.data.erro || 'Erro ao atualizar SAP.'); return; }
+    const item = allSafs.find(s => s.solicitacao_id === id);
+    if (item) item.atualizado_sap = novoValor;
+    renderQueue();
+    Toast.success(novoValor ? 'SAP marcado como atualizado.' : 'Flag SAP removida.');
+  }
+
+  // Expose for inline onclick handlers
+  window._ccmAceitar       = aceitar;
+  window._ccmRecusar       = recusar;
+  window._ccmMostrarRecusa = mostrarRecusa; // compat
+  window._ccmToggleSap     = toggleSap;
+  window._ccmRenderQueue   = renderQueue;
+
+  // ───────── Load ─────────
+  async function loadQueue() {
+    document.getElementById('ccm-queue').innerHTML =
+      '<div class="spinner-center"><div class="spinner"></div></div>';
+    const res = await API.filaCCM();
+    if (!res.ok) {
+      document.getElementById('ccm-queue').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">&#9888;&#65039;</div>
+          <p class="empty-state-title">Erro ao carregar fila</p>
+          <p class="empty-state-text">${res.data.erro || 'Tente novamente.'}</p>
+        </div>`;
+      return;
+    }
+    allSafs = res.data || [];
+    updateStats();
+    populateEquipFilter();
+    renderQueue();
+  }
+
+  // ───────── Bootstrap ─────────
+  document.addEventListener('DOMContentLoaded', function () {
+    const user = Auth.requireAuth(['CCM']);
+    if (!user) return;
+
+    Permissions.requestAll();
+
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        activeFilter = this.dataset.filter;
+        renderQueue();
+      });
+    });
+
+    document.getElementById('equip-filter')?.addEventListener('change', function () {
+      activeEquip = this.value;
+      renderQueue();
+    });
+
+    document.getElementById('btn-refresh').addEventListener('click', loadQueue);
+
+    loadQueue();
+  });
+})();
 </script>
 {% endblock %}

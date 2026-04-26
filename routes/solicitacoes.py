@@ -1,4 +1,5 @@
 import os
+import base64
 from flask import Blueprint, jsonify, request
 from supabase import Client, create_client
 
@@ -54,6 +55,8 @@ def criar_saf():
         # 1. Monta o payload com os novos nomes de colunas
         nova_saf = {
             "notificador_id": dados.get("notificador_id"),
+            "notificador_nome": dados.get("notificador_nome"),
+            "notificador_area": dados.get("notificador_area"),
             "titulo_falha": dados.get("titulo_falha"),
             "descricao_longa": dados.get("descricao_longa"),
             "local_instalacao": dados.get("local_instalacao"),
@@ -69,7 +72,27 @@ def criar_saf():
         saf_id = resposta_saf.data[0]["id"]
         ticket = resposta_saf.data[0]["ticket_saf"]
 
-        # 3. Insere no controle CCM
+        # 3. Upload da foto de evidência para o Storage
+        foto_b64 = dados.get("foto_base64") or ""
+        if foto_b64:
+            if "," in foto_b64:
+                foto_b64 = foto_b64.split(",", 1)[1]
+            try:
+                img_bytes = base64.b64decode(foto_b64)
+                storage_path = f"safs/{saf_id}/evidencia.jpg"
+                supabase.storage.from_("saf-evidencias").upload(
+                    path=storage_path,
+                    file=img_bytes,
+                    file_options={"content-type": "image/jpeg", "upsert": "true"},
+                )
+                public_url = supabase.storage.from_("saf-evidencias").get_public_url(storage_path)
+                supabase.table("saf_solicitacoes").update(
+                    {"anexo_evidencia_url": public_url}
+                ).eq("id", saf_id).execute()
+            except Exception:
+                pass  # Falha no upload não deve bloquear a criação da SAF
+
+        # 4. Insere no controle CCM
         novo_controle = {
             "solicitacao_id": saf_id,
             "status": "ABERTA",

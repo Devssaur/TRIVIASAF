@@ -13,9 +13,7 @@
   <div class="page-header">
     <div>
       <p class="page-title">Reportar uma Falha</p>
-      <p id="user-greeting" class="page-subtitle">Descreva o problema com suas pr&oacute;prias palavras.</p>
     </div>
-    <a href="/minhas-safs" class="btn btn-outline">&#8592; Voltar</a>
   </div>
 
   <form id="form-nova-saf" novalidate>
@@ -37,9 +35,6 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="descricao_falha">
-          Descreva o problema com suas pr&oacute;prias palavras&nbsp;<span class="required">*</span>
-        </label>
         <textarea id="descricao_falha" name="descricao_falha"
                   class="form-control" rows="3" required
                   placeholder="Ex: A bomba de &aacute;gua do po&ccedil;o n&ordm; 2 parou de funcionar e est&aacute; fazendo ru&iacute;do desde ontem..."></textarea>
@@ -289,10 +284,10 @@
     <!-- Framing guide: box-shadow darkens area OUTSIDE the orange square -->
     <div id="cam-guide"
          style="position:absolute;
-                top:48%;left:50%;
+                top:50%;left:50%;
                 transform:translate(-50%, -50%);
-                width:min(74vw, 52vh);
-                height:min(74vw, 52vh);
+                width:min(35vw, 52vh);
+                height:min(35vw, 52vh);
                 box-shadow:0 0 0 9999px rgba(0,0,0,0.58);
                 border-radius:5px;
                 pointer-events:none;">
@@ -353,11 +348,6 @@
 document.addEventListener('DOMContentLoaded', async function () {
   const user = Auth.requireAuth(['SOLICITANTE']);
   if (!user) return;
-
-  // Greeting with first name
-  const firstName = (user.nome || '').split(' ')[0];
-  document.getElementById('user-greeting').textContent =
-    `Ol\xe1${firstName ? ', ' + firstName : ''}! Use a busca abaixo \u2014 o sistema identificar\xe1 o equipamento automaticamente.`;
 
   // Default date/time = now
   const now = new Date();
@@ -716,6 +706,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     const payload = {
       notificador_id:     user.id,
+      notificador_nome:   user.nome  || '',
+      notificador_area:   user.area  || '',
       titulo_falha:       titulo,
       descricao_longa:    descricao,
       local_instalacao:   document.getElementById('local_instalacao_id').value,
