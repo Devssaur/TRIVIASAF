@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from dotenv import load_dotenv
 
 # Carrega as variaveis antes de importar modulos que dependem delas.
@@ -22,7 +22,7 @@ app.register_blueprint(sap_bp, url_prefix='/api/sap')
 
 @app.route("/")
 def index():
-    return jsonify({"mensagem": "Sistema SAF Operacional"})
+    return render_template("index.html")
 
 if __name__ == "__main__":
     # debug=True é excelente para desenvolvimento (reinicia ao salvar)

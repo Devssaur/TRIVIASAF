@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
 from flask import Blueprint, jsonify, request
 from supabase import Client, create_client
+
+load_dotenv()
 
 auth_bp = Blueprint("auth_bp", __name__)
 
@@ -42,7 +45,7 @@ def login():
 
 	result = (
 		supabase.table("usuarios")
-		.select("id, nome, perfil, senha_hash")
+		.select("id, nome, email, perfil, senha_hash")
 		.eq("email", email)
 		.limit(1)
 		.execute()
@@ -63,6 +66,7 @@ def login():
 			{
 				"id": usuario.get("id"),
 				"nome": usuario.get("nome"),
+				"email": usuario.get("email"),
 				"perfil": usuario.get("perfil"),
 			}
 		),

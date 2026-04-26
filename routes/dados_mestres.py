@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
 from flask import Blueprint, jsonify
 from supabase import Client, create_client
+
+load_dotenv()
 
 dados_bp = Blueprint("dados_bp", __name__)
 
@@ -21,7 +24,7 @@ def listar_locais():
         supabase = _get_supabase_client()
         result = (
             supabase.table("locais_instalacao")
-            .select("*")
+            .select("id_sap, descricao")
             .order("descricao")
             .execute()
         )
@@ -30,14 +33,14 @@ def listar_locais():
         return jsonify({"erro": str(e)}), 500
 
 
-@dados_bp.route("/equipamentos/<local_id>", methods=["GET"])
-def listar_equipamentos_por_local(local_id):
+@dados_bp.route("/equipamentos/<local_id_sap>", methods=["GET"])
+def listar_equipamentos_por_local(local_id_sap):
     try:
         supabase = _get_supabase_client()
         result = (
             supabase.table("equipamentos")
-            .select("*")
-            .eq("local_instalacao_id", local_id)
+            .select("id_sap, descricao")
+            .eq("local_id_sap", local_id_sap)
             .order("descricao")
             .execute()
         )
@@ -46,16 +49,18 @@ def listar_equipamentos_por_local(local_id):
         return jsonify({"erro": str(e)}), 500
 
 
-@dados_bp.route("/sintomas/<equipamento_id>", methods=["GET"])
-def listar_sintomas_por_equipamento(equipamento_id):
+@dados_bp.route("/sintomas/<equipamento_id_sap>", methods=["GET"])
+def listar_sintomas_por_equipamento(equipamento_id_sap):
     try:
         supabase = _get_supabase_client()
         result = (
             supabase.table("sintomas_catalogo")
-            .select("*")
+            .select("id, sintoma_codigo, descricao")
+            .eq("equipamento_id_sap", equipamento_id_sap)
             .order("descricao")
             .execute()
         )
         return jsonify({"sintomas": result.data, "total": len(result.data)}), 200
     except Exception as e:
+        return jsonify({"erro": str(e)}), 500
         return jsonify({"erro": str(e)}), 500

@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAF – Sistema de Abertura de Falhas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <!-- ============================================================
+       SEÇÃO DE LOGIN
+  ============================================================ -->
+  <section id="secao-login" class="hidden flex items-center justify-center min-h-screen">
+    <div class="bg-white rounded-2xl shadow-lg w-full max-w-sm p-8">
+      <h1 class="text-2xl font-bold text-center text-blue-700 mb-1">SAF</h1>
+      <p class="text-center text-gray-500 text-sm mb-6">Sistema de Abertura de Falhas</p>
+
+      <div id="login-erro" class="hidden bg-red-50 border border-red-300 text-red-700 text-sm rounded-lg px-4 py-3 mb-4"></div>
+
+      <form id="form-login" novalidate>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="input-email">E-mail</label>
+        <input id="input-email" type="email" placeholder="seu@email.com"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="input-senha">Senha</label>
+        <input id="input-senha" type="password" placeholder="••••••••"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-6 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+
+        <button type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
+          Entrar
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SEÇÃO DE DASHBOARD
+  ============================================================ -->
+  <section id="secao-dashboard" class="hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow">
+      <div>
+        <span class="font-bold text-lg">SAF</span>
+        <span class="ml-3 text-blue-200 text-sm" id="header-perfil-badge"></span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-sm" id="header-nome"></span>
+        <button id="btn-logout"
+          class="text-xs bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-lg transition">
+          Sair
+        </button>
+      </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+      <!-- ===== PAINEL DO SOLICITANTE ===== -->
+      <div id="painel-solicitante" class="hidden space-y-8">
+
+        <!-- Formulário Nova SAF -->
+        <div class="bg-white rounded-2xl shadow p-6">
+          <h2 class="text-lg font-bold text-gray-800 mb-4">Nova SAF</h2>
+
+          <div id="form-saf-sucesso" class="hidden bg-green-50 border border-green-300 text-green-800 text-sm rounded-lg px-4 py-3 mb-4"></div>
+          <div id="form-saf-erro" class="hidden bg-red-50 border border-red-300 text-red-700 text-sm rounded-lg px-4 py-3 mb-4"></div>
+
+          <form id="form-nova-saf" novalidate class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Título da Falha</label>
+              <input id="saf-titulo" type="text" placeholder="Breve descrição da falha"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Descrição Longa</label>
+              <textarea id="saf-descricao" rows="3" placeholder="Descreva a falha em detalhes..."
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" required></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Local de Instalação</label>
+              <select id="saf-local"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <option value="">Carregando...</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Equipamento</label>
+              <select id="saf-equipamento"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" disabled required>
+                <option value="">Selecione um local primeiro</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sintoma</label>
+              <select id="saf-sintoma"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" disabled required>
+                <option value="">Selecione um equipamento primeiro</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+              <select id="saf-prioridade"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <option value="">Selecione</option>
+                <option value="1">1 – Muito Alta</option>
+                <option value="2">2 – Alta</option>
+                <option value="3">3 – Média</option>
+                <option value="4">4 – Baixa</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Data de Início da Avaria</label>
+              <input id="saf-data" type="date"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Início da Avaria</label>
+              <input id="saf-hora" type="time"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            </div>
+
+            <div class="md:col-span-2 flex justify-end">
+              <button type="submit" id="btn-criar-saf"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition">
+                Abrir SAF
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Minhas SAFs -->
+        <div class="bg-white rounded-2xl shadow p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-gray-800">Minhas SAFs</h2>
+            <button id="btn-atualizar-minhas" onclick="carregarMinhasSAFs()"
+              class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition">
+              Atualizar
+            </button>
+          </div>
+          <div id="tabela-minhas-safs" class="overflow-x-auto">
+            <p class="text-gray-400 text-sm">Carregando...</p>
+          </div>
+        </div>
+      </div>
+      <!-- /painel-solicitante -->
+
+      <!-- ===== PAINEL DO CCM ===== -->
+      <div id="painel-ccm" class="hidden space-y-8">
+
+        <div class="bg-white rounded-2xl shadow p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-gray-800">Pendentes para Avaliação</h2>
+            <button onclick="carregarPendentes()"
+              class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition">
+              Atualizar
+            </button>
+          </div>
+
+          <!-- Modal de devolução -->
+          <div id="modal-devolucao" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+              <h3 class="font-bold text-gray-800 mb-3">Motivo da Devolução</h3>
+              <textarea id="motivo-devolucao" rows="4" placeholder="Descreva o motivo para devolução..."
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-yellow-500 mb-4"></textarea>
+              <div class="flex justify-end gap-2">
+                <button onclick="fecharModalDevolucao()"
+                  class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+                <button id="btn-confirmar-devolucao"
+                  class="px-4 py-2 text-sm bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg transition">Confirmar Devolução</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="tabela-pendentes" class="overflow-x-auto">
+            <p class="text-gray-400 text-sm">Carregando...</p>
+          </div>
+        </div>
+      </div>
+      <!-- /painel-ccm -->
+
+    </main>
+  </section>
+
+  <!-- ============================================================
+       JAVASCRIPT
+  ============================================================ -->
+  <script>
+    // ----------------------------------------------------------------
+    // Estado da aplicação
+    // ----------------------------------------------------------------
+    let usuarioLogado = null;
+    let _solicitacaoParaDevolver = null;
+
+    // ----------------------------------------------------------------
+    // Inicialização
+    // ----------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+      const salvo = localStorage.getItem('saf_usuario');
+      if (salvo) {
+        usuarioLogado = JSON.parse(salvo);
+        abrirDashboard();
+      } else {
+        mostrar('secao-login');
+      }
+    });
+
+    // ----------------------------------------------------------------
+    // Utilitários de UI
+    // ----------------------------------------------------------------
+    function mostrar(id) {
+      document.querySelectorAll('#secao-login, #secao-dashboard').forEach(el => el.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function setPainelPerfil(perfil) {
+      document.getElementById('painel-solicitante').classList.add('hidden');
+      document.getElementById('painel-ccm').classList.add('hidden');
+      if (perfil === 'CCM') {
+        document.getElementById('painel-ccm').classList.remove('hidden');
+      } else {
+        document.getElementById('painel-solicitante').classList.remove('hidden');
+      }
+    }
+
+    function badgePerfil(perfil) {
+      const cores = { 'CCM': 'bg-yellow-400 text-yellow-900', 'Solicitante': 'bg-green-400 text-green-900' };
+      const cls = cores[perfil] || 'bg-gray-300 text-gray-800';
+      return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${cls}">${perfil}</span>`;
+    }
+
+    function prioridadeLabel(p) {
+      const map = { 1: 'Muito Alta', 2: 'Alta', 3: 'Média', 4: 'Baixa' };
+      const cor = { 1: 'text-red-600', 2: 'text-orange-500', 3: 'text-yellow-600', 4: 'text-green-600' };
+      return `<span class="font-semibold ${cor[p] || ''}">${p} – ${map[p] || '?'}</span>`;
+    }
+
+    function statusBadge(status) {
+      const map = {
+        'ABERTA':    'bg-blue-100 text-blue-700',
+        'APROVADA':  'bg-green-100 text-green-700',
+        'DEVOLVIDA': 'bg-yellow-100 text-yellow-700',
+        'CANCELADA': 'bg-red-100 text-red-700',
+        'ENVIADA_SAP': 'bg-purple-100 text-purple-700',
+      };
+      const cls = map[status] || 'bg-gray-100 text-gray-600';
+      return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${cls}">${status || '–'}</span>`;
+    }
+
+    function formatarData(iso) {
+      if (!iso) return '–';
+      return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    // ----------------------------------------------------------------
+    // Autenticação
+    // ----------------------------------------------------------------
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const erroEl = document.getElementById('login-erro');
+      erroEl.classList.add('hidden');
+
+      const email = document.getElementById('input-email').value.trim();
+      const senha = document.getElementById('input-senha').value;
+
+      if (!email || !senha) {
+        erroEl.textContent = 'Preencha e-mail e senha.';
+        erroEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          erroEl.textContent = data.erro || 'Credenciais inválidas.';
+          erroEl.classList.remove('hidden');
+          return;
+        }
+
+        usuarioLogado = { id: data.id, nome: data.nome, email: data.email, perfil: data.perfil };
+        localStorage.setItem('saf_usuario', JSON.stringify(usuarioLogado));
+        abrirDashboard();
+      } catch (err) {
+        erroEl.textContent = 'Erro de conexão com o servidor.';
+        erroEl.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      localStorage.removeItem('saf_usuario');
+      usuarioLogado = null;
+      document.getElementById('form-login').reset();
+      mostrar('secao-login');
+    });
+
+    // ----------------------------------------------------------------
+    // Dashboard
+    // ----------------------------------------------------------------
+    function abrirDashboard() {
+      document.getElementById('header-nome').textContent = usuarioLogado.nome;
+      document.getElementById('header-perfil-badge').innerHTML = badgePerfil(usuarioLogado.perfil);
+      mostrar('secao-dashboard');
+      setPainelPerfil(usuarioLogado.perfil);
+
+      if (usuarioLogado.perfil === 'CCM') {
+        carregarPendentes();
+      } else {
+        carregarLocais();
+        carregarMinhasSAFs();
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Dados Mestres (Cascata de Selects)
+    // ----------------------------------------------------------------
+    async function carregarLocais() {
+      const sel = document.getElementById('saf-local');
+      sel.innerHTML = '<option value="">Carregando...</option>';
+      try {
+        const res = await fetch('/api/dados/locais');
+        const data = await res.json();
+        sel.innerHTML = '<option value="">Selecione o local</option>';
+        (data.locais || []).forEach(l => {
+          sel.innerHTML += `<option value="${l.id_sap}">${l.id_sap} – ${l.descricao}</option>`;
+        });
+      } catch {
+        sel.innerHTML = '<option value="">Erro ao carregar</option>';
+      }
+    }
+
+    document.getElementById('saf-local').addEventListener('change', async function () {
+      const eqSel = document.getElementById('saf-equipamento');
+      const sinSel = document.getElementById('saf-sintoma');
+
+      eqSel.innerHTML = '<option value="">Carregando equipamentos...</option>';
+      eqSel.disabled = true;
+      sinSel.innerHTML = '<option value="">Selecione um equipamento primeiro</option>';
+      sinSel.disabled = true;
+
+      const localId = this.value;
+      if (!localId) {
+        eqSel.innerHTML = '<option value="">Selecione um local primeiro</option>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/dados/equipamentos/${encodeURIComponent(localId)}`);
+        const data = await res.json();
+        eqSel.innerHTML = '<option value="">Selecione o equipamento</option>';
+        (data.equipamentos || []).forEach(eq => {
+          eqSel.innerHTML += `<option value="${eq.id_sap}">${eq.id_sap} – ${eq.descricao}</option>`;
+        });
+        eqSel.disabled = false;
+      } catch {
+        eqSel.innerHTML = '<option value="">Erro ao carregar</option>';
+      }
+    });
+
+    document.getElementById('saf-equipamento').addEventListener('change', async function () {
+      const sinSel = document.getElementById('saf-sintoma');
+      sinSel.innerHTML = '<option value="">Carregando sintomas...</option>';
+      sinSel.disabled = true;
+
+      const equipId = this.value;
+      if (!equipId) {
+        sinSel.innerHTML = '<option value="">Selecione um equipamento primeiro</option>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/dados/sintomas/${encodeURIComponent(equipId)}`);
+        const data = await res.json();
+        sinSel.innerHTML = '<option value="">Selecione o sintoma</option>';
+        (data.sintomas || []).forEach(s => {
+          sinSel.innerHTML += `<option value="${s.sintoma_codigo}">${s.sintoma_codigo} – ${s.descricao}</option>`;
+        });
+        sinSel.disabled = false;
+      } catch {
+        sinSel.innerHTML = '<option value="">Erro ao carregar</option>';
+      }
+    });
+
+    // ----------------------------------------------------------------
+    // Formulário Nova SAF
+    // ----------------------------------------------------------------
+    document.getElementById('form-nova-saf').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sucEl = document.getElementById('form-saf-sucesso');
+      const errEl = document.getElementById('form-saf-erro');
+      sucEl.classList.add('hidden');
+      errEl.classList.add('hidden');
+
+      const payload = {
+        notificador_id:    usuarioLogado.id,
+        titulo_falha:      document.getElementById('saf-titulo').value.trim(),
+        descricao_longa:   document.getElementById('saf-descricao').value.trim(),
+        local_instalacao:  document.getElementById('saf-local').value,
+        equipamento:       document.getElementById('saf-equipamento').value,
+        prioridade:        document.getElementById('saf-prioridade').value,
+        data_inicio_avaria: document.getElementById('saf-data').value,
+        hora_inicio_avaria: document.getElementById('saf-hora').value,
+      };
+
+      const camposFaltando = Object.entries(payload).filter(([, v]) => !v).map(([k]) => k);
+      if (camposFaltando.length) {
+        errEl.textContent = 'Preencha todos os campos antes de abrir a SAF.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btn-criar-saf');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      try {
+        const res = await fetch('/api/solicitacoes/criar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          errEl.textContent = data.erro || 'Erro ao criar SAF.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+
+        sucEl.textContent = `SAF aberta com sucesso! Ticket: ${data.ticket}`;
+        sucEl.classList.remove('hidden');
+        document.getElementById('form-nova-saf').reset();
+        document.getElementById('saf-equipamento').disabled = true;
+        document.getElementById('saf-sintoma').disabled = true;
+        await carregarLocais();
+        await carregarMinhasSAFs();
+      } catch {
+        errEl.textContent = 'Erro de conexão com o servidor.';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Abrir SAF';
+      }
+    });
+
+    // ----------------------------------------------------------------
+    // Minhas SAFs (Solicitante)
+    // ----------------------------------------------------------------
+    async function carregarMinhasSAFs() {
+      const container = document.getElementById('tabela-minhas-safs');
+      container.innerHTML = '<p class="text-gray-400 text-sm">Carregando...</p>';
+
+      try {
+        const res = await fetch(`/api/solicitacoes/minhas/${usuarioLogado.id}`);
+        const data = await res.json();
+        const lista = data.solicitacoes || [];
+
+        if (!lista.length) {
+          container.innerHTML = '<p class="text-gray-400 text-sm">Nenhuma SAF encontrada.</p>';
+          return;
+        }
+
+        container.innerHTML = `
+          <table class="min-w-full text-sm text-left">
+            <thead>
+              <tr class="border-b text-gray-500 text-xs uppercase">
+                <th class="py-2 pr-4">Título</th>
+                <th class="py-2 pr-4">Prioridade</th>
+                <th class="py-2 pr-4">Status</th>
+                <th class="py-2">Criado em</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lista.map(s => {
+                const status = s.saf_controle_ccm?.status ?? s.saf_controle_ccm?.[0]?.status;
+                return `
+                <tr class="border-b hover:bg-gray-50">
+                  <td class="py-2 pr-4 font-medium text-gray-800">${s.titulo_falha || '–'}</td>
+                  <td class="py-2 pr-4">${prioridadeLabel(s.prioridade)}</td>
+                  <td class="py-2 pr-4">${statusBadge(status)}</td>
+                  <td class="py-2 text-gray-500">${formatarData(s.criado_em)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+      } catch {
+        container.innerHTML = '<p class="text-red-400 text-sm">Erro ao carregar SAFs.</p>';
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Pendentes CCM
+    // ----------------------------------------------------------------
+    async function carregarPendentes() {
+      const container = document.getElementById('tabela-pendentes');
+      container.innerHTML = '<p class="text-gray-400 text-sm">Carregando...</p>';
+
+      try {
+        const res = await fetch('/api/ccm/pendentes');
+        const lista = await res.json();
+
+        if (!Array.isArray(lista) || !lista.length) {
+          container.innerHTML = '<p class="text-gray-400 text-sm">Nenhuma SAF pendente.</p>';
+          return;
+        }
+
+        container.innerHTML = `
+          <table class="min-w-full text-sm text-left">
+            <thead>
+              <tr class="border-b text-gray-500 text-xs uppercase">
+                <th class="py-2 pr-4">Ticket</th>
+                <th class="py-2 pr-4">Título</th>
+                <th class="py-2 pr-4">Equipamento</th>
+                <th class="py-2 pr-4">Prioridade</th>
+                <th class="py-2 pr-4">Criado em</th>
+                <th class="py-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lista.map(item => {
+                const saf = item.saf_solicitacoes || {};
+                return `
+                <tr class="border-b hover:bg-gray-50" id="row-${item.solicitacao_id}">
+                  <td class="py-2 pr-4 font-mono text-blue-700">${saf.ticket_saf || '–'}</td>
+                  <td class="py-2 pr-4 font-medium text-gray-800">${saf.titulo_falha || '–'}</td>
+                  <td class="py-2 pr-4 text-gray-600">${saf.equipamento || '–'}</td>
+                  <td class="py-2 pr-4">${prioridadeLabel(saf.prioridade)}</td>
+                  <td class="py-2 pr-4 text-gray-500">${formatarData(item.criado_em)}</td>
+                  <td class="py-2 flex gap-2 flex-wrap">
+                    <button onclick="avaliarSAF('${item.solicitacao_id}', 'APROVADA')"
+                      class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg transition">
+                      Aprovar
+                    </button>
+                    <button onclick="abrirModalDevolucao('${item.solicitacao_id}')"
+                      class="text-xs bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-lg transition">
+                      Devolver
+                    </button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+      } catch {
+        container.innerHTML = '<p class="text-red-400 text-sm">Erro ao carregar pendentes.</p>';
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Avaliação CCM
+    // ----------------------------------------------------------------
+    async function avaliarSAF(solicitacaoId, status, motivo) {
+      const payload = { status, avaliador_id: usuarioLogado.id };
+      if (motivo) payload.motivo_devolucao = motivo;
+
+      try {
+        const res = await fetch(`/api/ccm/avaliar/${solicitacaoId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.erro || 'Erro ao avaliar SAF.');
+          return;
+        }
+
+        const row = document.getElementById(`row-${solicitacaoId}`);
+        if (row) {
+          if (status === 'APROVADA') {
+            // Substitui botões de avaliação por botão de sincronização SAP
+            const acoesTd = row.querySelector('td:last-child');
+            acoesTd.innerHTML = `
+              <span class="text-xs font-semibold text-green-600 mr-2">✓ Aprovada</span>
+              <button onclick="sincronizarSAP('${solicitacaoId}')"
+                class="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg transition">
+                Sincronizar SAP
+              </button>`;
+          } else {
+            row.remove();
+          }
+        }
+      } catch {
+        alert('Erro de conexão ao avaliar SAF.');
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Modal de Devolução
+    // ----------------------------------------------------------------
+    function abrirModalDevolucao(solicitacaoId) {
+      _solicitacaoParaDevolver = solicitacaoId;
+      document.getElementById('motivo-devolucao').value = '';
+      document.getElementById('modal-devolucao').classList.remove('hidden');
+    }
+
+    function fecharModalDevolucao() {
+      _solicitacaoParaDevolver = null;
+      document.getElementById('modal-devolucao').classList.add('hidden');
+    }
+
+    document.getElementById('btn-confirmar-devolucao').addEventListener('click', async () => {
+      const motivo = document.getElementById('motivo-devolucao').value.trim();
+      if (!motivo) {
+        alert('Informe o motivo da devolução.');
+        return;
+      }
+      fecharModalDevolucao();
+      await avaliarSAF(_solicitacaoParaDevolver, 'DEVOLVIDA', motivo);
+    });
+
+    // Fecha modal clicando fora
+    document.getElementById('modal-devolucao').addEventListener('click', function (e) {
+      if (e.target === this) fecharModalDevolucao();
+    });
+
+    // ----------------------------------------------------------------
+    // Sincronizar SAP
+    // ----------------------------------------------------------------
+    async function sincronizarSAP(solicitacaoId) {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      try {
+        const res = await fetch(`/api/sap/sincronizar/${solicitacaoId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.erro || 'Erro ao sincronizar com SAP.');
+          btn.disabled = false;
+          btn.textContent = 'Sincronizar SAP';
+          return;
+        }
+
+        const respSAP = data.resposta_sap || {};
+        btn.closest('td').innerHTML = `
+          <span class="text-xs font-semibold text-purple-700">
+            ✓ SAP: Nota ${respSAP.qmnum || '–'} / Ordem ${respSAP.aufnr || '–'}
+          </span>`;
+      } catch {
+        alert('Erro de conexão ao sincronizar com SAP.');
+        btn.disabled = false;
+        btn.textContent = 'Sincronizar SAP';
+      }
+    }
+  </script>
+
+</body>
+</html>
