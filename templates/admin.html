@@ -67,12 +67,11 @@
               <th>Área</th>
               <th>Perfil</th>
               <th>Acesso</th>
-              <th>Cadastro</th>
-              <th style="width:180px;">Ações</th>
+              <th style="width:120px;">Ações</th>
             </tr>
           </thead>
           <tbody id="usuarios-body">
-            <tr><td colspan="8" class="text-muted text-sm" style="padding:1.5rem;text-align:center;">Carregando...</td></tr>
+            <tr><td colspan="7" class="text-muted text-sm" style="padding:1.5rem;text-align:center;">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -110,6 +109,56 @@
 
 </div>
 
+<!-- Modal: Editar usuário -->
+<div class="modal-backdrop" id="modal-editar-usuario">
+  <div class="modal modal-compact" style="max-width:520px;">
+    <div class="modal-header">
+      <span class="modal-title">Editar cadastro do usuário</span>
+      <button class="modal-close" onclick="Modal.close('modal-editar-usuario')">✕</button>
+    </div>
+    <form id="form-editar-usuario" onsubmit="salvarEdicaoUsuario(event)">
+      <div class="modal-body compact-body">
+        <input type="hidden" id="edit-user-id">
+
+        <div class="compact-grid">
+          <label class="compact-label" for="edit-nome">Nome</label>
+          <input id="edit-nome" class="form-control compact-control" type="text" required>
+        </div>
+
+        <div class="compact-grid">
+          <label class="compact-label" for="edit-email">E-mail</label>
+          <input id="edit-email" class="form-control compact-control" type="email" required>
+        </div>
+
+        <div class="compact-grid two-cols">
+          <div>
+            <label class="compact-label" for="edit-empresa">Empresa</label>
+            <input id="edit-empresa" class="form-control compact-control" type="text">
+          </div>
+          <div>
+            <label class="compact-label" for="edit-area">Área</label>
+            <input id="edit-area" class="form-control compact-control" type="text">
+          </div>
+        </div>
+
+        <div class="compact-grid">
+          <label class="compact-label" for="edit-perfil">Perfil</label>
+          <select id="edit-perfil" class="form-control compact-control" required>
+            <option value="Solicitante">Solicitante</option>
+            <option value="CCM">CCM</option>
+            <option value="Administrador">Administrador</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer compact-footer">
+        <button type="button" class="btn btn-outline btn-sm" onclick="Modal.close('modal-editar-usuario')">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="btn-salvar-edicao">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Modal: Payload JSON -->
 <div class="modal-backdrop" id="modal-payload">
   <div class="modal" style="max-width:600px;">
@@ -133,58 +182,84 @@
 document.addEventListener('DOMContentLoaded', async function () {
   const user = Auth.requireAuth(['ADMIN']);
   if (!user) return;
+  window.__adminUser = user;
 
   let allLogs      = [];
   let allUsuarios  = [];
 
   // ── Labels / badges de perfil ────────────────────
-  const PERFIS_LABEL  = { Solicitante: 'Solicitante', CCM: 'CCM', Administrador: 'Administrador' };
-  const PERFIS_BADGE  = { Solicitante: 'badge-aberta', CCM: 'badge-em_analise', Administrador: 'badge-aprovada' };
   const EMPRESAS      = { TRIVIA:'Trivia Trens', TIC:'Tic Trens', METROBH:'Metrô BH', GOCIL:'Gocil' };
   const AREAS         = { MANUTENCAO:'Manutenção', OPERACAO:'Operação', ENGENHARIA:'Engenharia',
                           TI:'TI', SEGURANCA:'Segurança', LIMPEZA:'Limpeza e conservação' };
+
+  const getUsuarioById = (id) => allUsuarios.find(u => u.id === id);
+  const criadoEm = (u) => u.created_at || null;
+
+  function switchAcesso(usuario) {
+    const cls = usuario.aprovado ? '' : ' aprov-switch-blocked';
+    return `
+      <label class="aprov-switch${cls}" title="${usuario.aprovado ? 'Clique para bloquear acesso' : 'Clique para aprovar acesso'}">
+        <input type="checkbox" ${usuario.aprovado ? 'checked' : ''}
+               onchange="toggleAcessoConfirm('${usuario.id}', this.checked, this)">
+        <span class="aprov-slider"></span>
+      </label>`;
+  }
+
+  function perfilSelect(usuario) {
+    return `
+      <select class="form-control admin-perfil-select"
+              onchange="mudarPerfilConfirm('${usuario.id}', this.value, this)">
+        <option value="Solicitante" ${usuario.perfil==='Solicitante'?'selected':''}>Solicitante</option>
+        <option value="CCM" ${usuario.perfil==='CCM'?'selected':''}>CCM</option>
+        <option value="Administrador" ${usuario.perfil==='Administrador'?'selected':''}>Administrador</option>
+      </select>`;
+  }
+
+  function acoesUsuario(usuario) {
+    return `
+      <div class="admin-actions">
+        <button class="btn-icon btn-icon-edit" title="Editar usuário" onclick="abrirEdicaoUsuario('${usuario.id}')">&#9998;</button>
+        <button class="btn-icon btn-icon-delete" title="Excluir usuário" onclick="confirmarExclusaoUsuario('${usuario.id}')">&#128465;</button>
+      </div>`;
+  }
 
   // ── Renderiza usuários ───────────────────────────
   function renderUsuarios(list) {
     document.getElementById('loading-users').textContent = `${list.length} registro(s)`;
     if (!list.length) {
       document.getElementById('usuarios-body').innerHTML =
-        '<tr><td colspan="8" class="text-muted" style="text-align:center;padding:1.5rem;">Nenhum usuário encontrado.</td></tr>';
+        '<tr><td colspan="7" class="text-muted" style="text-align:center;padding:1.5rem;">Nenhum usuário encontrado.</td></tr>';
       return;
     }
     const rows = list.map(u => {
-      const aprovBadge = u.aprovado
-        ? '<span style="color:var(--green);font-weight:700;font-size:.8rem;">&#9679; Aprovado</span>'
-        : '<span style="color:var(--warning);font-weight:700;font-size:.8rem;">&#9203; Pendente</span>';
-
-      const toggleSwitch = `
-        <label class="aprov-switch" title="${u.aprovado ? 'Clique para bloquear acesso' : 'Clique para aprovar acesso'}">
-          <input type="checkbox" ${u.aprovado ? 'checked' : ''}
-                 onchange="toggleAcesso('${u.id}', this.checked, this)">
-          <span class="aprov-slider"></span>
-        </label>`;
-
-      const perfilSelect = `
-        <select class="field-input" style="height:28px;font-size:.75rem;padding:2px 8px;"
-                onchange="mudarPerfil('${u.id}', this.value)">
-          <option value="Solicitante" ${u.perfil==='Solicitante'?'selected':''}>Solicitante</option>
-          <option value="CCM"         ${u.perfil==='CCM'        ?'selected':''}>CCM</option>
-          <option value="Administrador" ${u.perfil==='Administrador'?'selected':''}>Administrador</option>
-        </select>`;
-
       return `
         <tr id="user-row-${u.id}">
           <td style="font-weight:600;">${u.nome || '—'}</td>
           <td class="text-muted text-sm">${u.email || '—'}</td>
           <td class="text-sm">${EMPRESAS[u.empresa] || u.empresa || '—'}</td>
           <td class="text-sm">${AREAS[u.area] || u.area || '—'}</td>
-          <td>${perfilSelect}</td>
-          <td>${aprovBadge}</td>
-          <td class="text-muted text-sm">${Fmt.date(u.criado_em)}</td>
-          <td style="text-align:center;">${toggleSwitch}</td>
+          <td>${perfilSelect(u)}</td>
+          <td style="text-align:center;">${switchAcesso(u)}</td>
+          <td>${acoesUsuario(u)}</td>
         </tr>`;
     }).join('');
     document.getElementById('usuarios-body').innerHTML = rows;
+  }
+
+  function getUsuariosFiltrados() {
+    const somentePendentes = document.getElementById('filter-pendentes').checked;
+    return somentePendentes ? allUsuarios.filter(u => !u.aprovado) : allUsuarios;
+  }
+
+  function atualizarUsuarioNaLista(usuarioAtualizado) {
+    const idx = allUsuarios.findIndex(u => u.id === usuarioAtualizado.id);
+    if (idx >= 0) allUsuarios[idx] = usuarioAtualizado;
+    renderUsuarios(getUsuariosFiltrados());
+  }
+
+  function removerUsuarioDaLista(usuarioId) {
+    allUsuarios = allUsuarios.filter(u => u.id !== usuarioId);
+    renderUsuarios(getUsuariosFiltrados());
   }
 
   // ── Carrega dados em paralelo ────────────────────
@@ -197,15 +272,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     allUsuarios = resUsers.data.usuarios || resUsers.data || [];
     document.getElementById('s-usuarios').textContent = allUsuarios.filter(u => u.aprovado).length;
     document.getElementById('s-pendentes').textContent = allUsuarios.filter(u => !u.aprovado).length;
-    renderUsuarios(allUsuarios);
+    renderUsuarios(getUsuariosFiltrados());
   } else {
     document.getElementById('usuarios-body').innerHTML =
-      `<tr><td colspan="8" style="color:var(--danger);text-align:center;padding:1.5rem;">${resUsers.data.erro || 'Erro ao carregar usuários.'}</td></tr>`;
+      `<tr><td colspan="7" style="color:var(--danger);text-align:center;padding:1.5rem;">${resUsers.data.erro || 'Erro ao carregar usuários.'}</td></tr>`;
   }
 
   // Filtro de pendentes
   document.getElementById('filter-pendentes').addEventListener('change', function () {
-    renderUsuarios(this.checked ? allUsuarios.filter(u => !u.aprovado) : allUsuarios);
+    renderUsuarios(getUsuariosFiltrados());
   });
 
   // ── Logs ──────────────────────────────────────────
@@ -214,6 +289,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     AVALIACAO_CCM: 'badge-em_analise', INTEGRACAO_SAP: 'badge-aprovada',
     BAPI_CREATE_ERROR: 'badge-cancelada', AVALIACAO_CCM_DEVOLVIDA: 'badge-devolvida',
     AVALIACAO_CCM_CANCELADA: 'badge-cancelada', INTEGRACAO_SAP_ERRO: 'badge-cancelada',
+    ADMIN_ALTEROU_ACESSO_USUARIO: 'badge-em_analise',
+    ADMIN_ALTEROU_PERFIL_USUARIO: 'badge-em_analise',
+    ADMIN_ALTEROU_CADASTRO_USUARIO: 'badge-aprovada',
+    ADMIN_EXCLUIU_USUARIO: 'badge-cancelada',
   };
 
   function renderLogs(list) {
@@ -269,36 +348,52 @@ document.addEventListener('DOMContentLoaded', async function () {
       document.getElementById(`tab-${this.dataset.tab}`).classList.remove('hidden');
     });
   });
+
+  window._adminStore = {
+    getUsuarioById,
+    atualizarUsuarioNaLista,
+    removerUsuarioDaLista,
+    getUsuariosFiltrados,
+    renderUsuarios,
+    get allUsuarios() { return allUsuarios; },
+    set allUsuarios(v) { allUsuarios = v; },
+  };
 });
 
 // ── Ações de usuário ─────────────────────────────
-async function toggleAcesso(id, aprovado, el) {
-  if (!aprovado) {
-    ConfirmModal.show({
-      title: 'Bloquear acesso',
-      message: 'Deseja bloquear o acesso deste usuário?',
-      confirmText: 'Bloquear',
-      confirmClass: 'btn-danger',
-      onConfirm: () => _aplicarAcesso(id, false, el)
-    });
-    el.checked = true; // reverte visualmente até confirmação
-    return;
-  }
-  await _aplicarAcesso(id, true, el);
+function _adminId() {
+  return (window.__adminUser || Auth.getUser() || {}).id || null;
+}
+
+function _recontarIndicadores() {
+  const usuarios = (window._adminStore && window._adminStore.allUsuarios) || [];
+  document.getElementById('s-usuarios').textContent = usuarios.filter(u => u.aprovado).length;
+  document.getElementById('s-pendentes').textContent = usuarios.filter(u => !u.aprovado).length;
+}
+
+function toggleAcessoConfirm(id, aprovado, el) {
+  const anterior = !aprovado;
+  el.checked = anterior;
+
+  ConfirmModal.show({
+    title: aprovado ? 'Aprovar acesso' : 'Bloquear acesso',
+    message: aprovado
+      ? 'Deseja aprovar o acesso deste usuário?'
+      : 'Deseja bloquear o acesso deste usuário?',
+    confirmText: aprovado ? 'Aprovar' : 'Bloquear',
+    confirmClass: aprovado ? 'btn-success' : 'btn-danger',
+    onConfirm: () => _aplicarAcesso(id, aprovado, el)
+  });
 }
 
 async function _aplicarAcesso(id, aprovado, el) {
   el.checked = aprovado;
-  const res = await API.aprovarUsuario(id, aprovado);
+  const res = await API.aprovarUsuario(id, aprovado, null, _adminId());
   if (res.ok) {
     Toast.success(aprovado ? 'Usuário aprovado!' : 'Acesso bloqueado.');
-    const row = el.closest('tr');
-    if (row) {
-      const badgeCell = row.cells[5];
-      badgeCell.innerHTML = aprovado
-        ? '<span style="color:var(--green);font-weight:700;font-size:.8rem;">&#9679; Aprovado</span>'
-        : '<span style="color:var(--warning);font-weight:700;font-size:.8rem;">&#9203; Pendente</span>';
-      el.closest('label').title = aprovado ? 'Clique para bloquear acesso' : 'Clique para aprovar acesso';
+    if (res.data && res.data.usuario && window._adminStore) {
+      window._adminStore.atualizarUsuarioNaLista(res.data.usuario);
+      _recontarIndicadores();
     }
   } else {
     Toast.error(res.data.erro || 'Erro ao alterar acesso.');
@@ -306,24 +401,121 @@ async function _aplicarAcesso(id, aprovado, el) {
   }
 }
 
-async function aprovarUsuario(id) {
-  const res = await API.aprovarUsuario(id, true);
-  if (res.ok) { Toast.success('Usuário aprovado!'); location.reload(); }
-  else         Toast.error(res.data.erro || 'Erro ao aprovar.');
+function mudarPerfilConfirm(id, perfil, el) {
+  const usuario = window._adminStore ? window._adminStore.getUsuarioById(id) : null;
+  if (!usuario) return;
+  const perfilAnterior = usuario.perfil;
+
+  if (perfilAnterior === perfil) return;
+  el.value = perfilAnterior;
+
+  ConfirmModal.show({
+    title: 'Alterar perfil',
+    message: `Deseja alterar o perfil para <strong>${perfil}</strong>?`,
+    confirmText: 'Confirmar',
+    confirmClass: 'btn-primary',
+    onConfirm: () => _mudarPerfil(id, perfil)
+  });
 }
 
-async function bloquearUsuario(id) {
-  const confirmed = await confirmAction('Bloquear acesso deste usuário?');
-  if (!confirmed) return;
-  const res = await API.aprovarUsuario(id, false);
-  if (res.ok) { Toast.success('Acesso bloqueado.'); location.reload(); }
-  else         Toast.error(res.data.erro || 'Erro ao bloquear.');
+async function _mudarPerfil(id, perfil) {
+  const res = await API.alterarPerfil(id, perfil, _adminId());
+  if (res.ok) {
+    Toast.success(`Perfil alterado para ${perfil}.`);
+    if (res.data && res.data.usuario && window._adminStore) {
+      window._adminStore.atualizarUsuarioNaLista(res.data.usuario);
+    }
+  } else {
+    Toast.error(res.data.erro || 'Erro ao alterar perfil.');
+  }
 }
 
-async function mudarPerfil(id, perfil) {
-  const res = await API.alterarPerfil(id, perfil);
-  if (res.ok) Toast.success(`Perfil alterado para ${perfil}.`);
-  else        Toast.error(res.data.erro || 'Erro ao alterar perfil.');
+function abrirEdicaoUsuario(id) {
+  const usuario = window._adminStore ? window._adminStore.getUsuarioById(id) : null;
+  if (!usuario) {
+    Toast.error('Usuário não encontrado para edição.');
+    return;
+  }
+
+  document.getElementById('edit-user-id').value = usuario.id;
+  document.getElementById('edit-nome').value = usuario.nome || '';
+  document.getElementById('edit-email').value = usuario.email || '';
+  document.getElementById('edit-empresa').value = usuario.empresa || '';
+  document.getElementById('edit-area').value = usuario.area || '';
+  document.getElementById('edit-perfil').value = usuario.perfil || 'Solicitante';
+  Modal.open('modal-editar-usuario');
+}
+
+function salvarEdicaoUsuario(event) {
+  event.preventDefault();
+  const usuarioId = document.getElementById('edit-user-id').value;
+
+  const payload = {
+    nome: document.getElementById('edit-nome').value.trim(),
+    email: document.getElementById('edit-email').value.trim(),
+    empresa: document.getElementById('edit-empresa').value.trim(),
+    area: document.getElementById('edit-area').value.trim(),
+    perfil: document.getElementById('edit-perfil').value,
+    ator_id: _adminId(),
+  };
+
+  if (!payload.nome || !payload.email) {
+    Toast.warning('Nome e e-mail são obrigatórios.');
+    return;
+  }
+
+  ConfirmModal.show({
+    title: 'Confirmar edição',
+    message: 'Deseja salvar as alterações deste usuário?',
+    confirmText: 'Salvar',
+    confirmClass: 'btn-primary',
+    onConfirm: () => _salvarEdicaoUsuario(usuarioId, payload)
+  });
+}
+
+async function _salvarEdicaoUsuario(usuarioId, payload) {
+  const btnSalvar = document.getElementById('btn-salvar-edicao');
+  setLoading(btnSalvar, true, 'Salvando...');
+  const res = await API.atualizarUsuario(usuarioId, payload);
+  setLoading(btnSalvar, false);
+
+  if (!res.ok) {
+    Toast.error(res.data.erro || 'Erro ao salvar edição.');
+    return;
+  }
+
+  if (res.data && res.data.usuario && window._adminStore) {
+    window._adminStore.atualizarUsuarioNaLista(res.data.usuario);
+  }
+  Modal.close('modal-editar-usuario');
+  Toast.success('Cadastro atualizado com sucesso.');
+}
+
+function confirmarExclusaoUsuario(id) {
+  const usuario = window._adminStore ? window._adminStore.getUsuarioById(id) : null;
+  const nome = usuario && usuario.nome ? usuario.nome : 'este usuário';
+
+  ConfirmModal.show({
+    title: 'Excluir usuário',
+    message: `Deseja excluir <strong>${nome}</strong>? Essa ação remove também o cadastro de autenticação.`,
+    confirmText: 'Excluir',
+    confirmClass: 'btn-danger',
+    onConfirm: () => _excluirUsuario(id)
+  });
+}
+
+async function _excluirUsuario(id) {
+  const res = await API.excluirUsuario(id, { ator_id: _adminId() });
+  if (!res.ok) {
+    Toast.error(res.data.erro || 'Erro ao excluir usuário.');
+    return;
+  }
+
+  if (window._adminStore) {
+    window._adminStore.removerUsuarioDaLista(id);
+    _recontarIndicadores();
+  }
+  Toast.success('Usuário excluído com sucesso.');
 }
 
 // Mostra payload JSON em modal

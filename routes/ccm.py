@@ -1,7 +1,11 @@
 from flask import Blueprint, request, jsonify
 import os
+import logging
 from supabase import create_client, Client
 from datetime import datetime, timezone
+import sap_client
+
+logger = logging.getLogger(__name__)
 
 ccm_bp = Blueprint('ccm', __name__)
 
@@ -75,6 +79,73 @@ def avaliar_saf(solicitacao_id):
                 .update({'status': 'Aprovada'}) \
                 .eq('id', solicitacao_id) \
                 .execute()
+
+            # ── Dispara criação da Nota no SAP (síncrono, retorna QMNUM) ──
+            qmnum      = None
+            erro_sap   = None
+            tipo_nota  = dados.get('tipo_nota', 'M2')
+
+            # Salva tipo_nota no controle CCM
+            supabase.table('saf_controle_ccm') \
+                .update({'tipo_nota': tipo_nota}) \
+                .eq('solicitacao_id', solicitacao_id) \
+                .execute()
+
+            try:
+                saf_res = supabase.table('saf_solicitacoes') \
+                    .select('*') \
+                    .eq('id', solicitacao_id) \
+                    .execute()
+                saf = saf_res.data[0] if saf_res.data else {}
+                saf['tipo_nota'] = tipo_nota
+
+                resultado = sap_client.sap_criar_nota(saf)
+                qmnum = resultado['qmnum']
+
+                supabase.table('saf_integracao_sap').upsert({
+                    "solicitacao_id":     solicitacao_id,
+                    "qmnum":              qmnum,
+                    "tipo_nota":          tipo_nota,
+                    "status_integracao":  "SUCESSO",
+                    "payload_envio": {
+                        "ticket_saf":       saf.get('ticket_saf'),
+                        "tipo_nota":        tipo_nota,
+                        "local_instalacao": saf.get('local_instalacao'),
+                        "equipamento":      saf.get('equipamento'),
+                        "prioridade":       saf.get('prioridade'),
+                    },
+                    "payload_resposta":    resultado.get('raw', {}),
+                    "ultima_tentativa_em": datetime.now(timezone.utc).isoformat(),
+                    "mensagem_erro":       None,
+                }).execute()
+
+                supabase.table('logs_auditoria').insert({
+                    "evento": "INTEGRACAO_SAP_SUCESSO",
+                    "payload": {"saf_id": solicitacao_id, "qmnum": qmnum},
+                }).execute()
+
+            except Exception as sap_err:
+                erro_sap = str(sap_err)
+                logger.error("Falha ao criar nota SAP (saf_id=%s): %s", solicitacao_id, sap_err)
+                try:
+                    supabase.table('saf_integracao_sap').upsert({
+                        "solicitacao_id":     solicitacao_id,
+                        "status_integracao":  "ERRO",
+                        "mensagem_erro":      erro_sap,
+                        "ultima_tentativa_em": datetime.now(timezone.utc).isoformat(),
+                    }).execute()
+                    supabase.table('logs_auditoria').insert({
+                        "evento": "INTEGRACAO_SAP_ERRO",
+                        "payload": {"saf_id": solicitacao_id, "erro": erro_sap},
+                    }).execute()
+                except Exception:
+                    pass
+
+            resposta = {"mensagem": "SAF aprovada.", "qmnum": qmnum}
+            if erro_sap:
+                resposta["aviso_sap"] = f"Aprovação registrada, mas a criação da nota SAP falhou: {erro_sap}. Tente novamente via POST /api/sap/criar-nota/{solicitacao_id}."
+            return jsonify(resposta), 200
+
         elif novo_status == 'DEVOLVIDA':
             supabase.table('saf_solicitacoes') \
                 .update({'status': 'Pendente'}) \

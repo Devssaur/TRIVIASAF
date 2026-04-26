@@ -67,7 +67,7 @@ const API = (() => {
     get:    (path)        => request('GET',    path),
     post:   (path, body)  => request('POST',   path, body),
     put:    (path, body)  => request('PUT',    path, body),
-    delete: (path)        => request('DELETE', path),
+    delete: (path, body)  => request('DELETE', path, body),
 
     // Auth
     login: (email, senha) => request('POST', '/auth/login', { email, senha }),
@@ -95,8 +95,10 @@ const API = (() => {
     // Admin
     logs:             ()               => request('GET',  '/admin/logs'),
     usuarios:         ()               => request('GET',  '/admin/usuarios'),
-    aprovarUsuario:   (id, aprovado, perfil) => request('POST', `/admin/usuarios/${id}/aprovar`, { aprovado, perfil }),
-    alterarPerfil:    (id, perfil)     => request('PUT',  `/admin/usuarios/${id}/perfil`, { perfil }),
+    aprovarUsuario:   (id, aprovado, perfil, ator_id) => request('POST', `/admin/usuarios/${id}/aprovar`, { aprovado, perfil, ator_id }),
+    alterarPerfil:    (id, perfil, ator_id) => request('PUT',  `/admin/usuarios/${id}/perfil`, { perfil, ator_id }),
+    atualizarUsuario: (id, body)       => request('PUT',  `/admin/usuarios/${id}`, body),
+    excluirUsuario:   (id, body)       => request('DELETE', `/admin/usuarios/${id}`, body),
     toggleSap:        (id, val)        => request('PATCH', `/ccm/toggle-sap/${id}`, { atualizado_sap: val }),
   };
 })();

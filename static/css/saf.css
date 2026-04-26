@@ -1051,6 +1051,83 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 }
 .aprov-switch input:checked + .aprov-slider { background: var(--green); }
 .aprov-switch input:checked + .aprov-slider::before { transform: translateX(18px); }
+.aprov-switch-blocked .aprov-slider { background: #fca5a5; }
+.aprov-switch-blocked:hover .aprov-slider { background: #f87171; }
+
+/* Admin - células de acesso e ações */
+
+.admin-perfil-select {
+  height: 30px;
+  font-size: .76rem;
+  padding: 2px 8px;
+  min-width: 120px;
+}
+
+.admin-actions {
+  display: flex;
+  justify-content: center;
+  gap: .35rem;
+}
+.btn-icon {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: .95rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--trans);
+}
+.btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+.btn-icon-edit:hover {
+  border-color: var(--info);
+  color: var(--info);
+  background: #eff6ff;
+}
+.btn-icon-delete {
+  border-color: #fd0000;
+  color: #fd0000;
+  background: #ffffff;
+}
+.btn-icon-delete:hover {
+  border-color: var(--danger);
+  color: #fff;
+  background: var(--danger);
+}
+
+/* Admin - modal compacto de edição */
+.modal-compact .compact-body {
+  padding: .85rem 1rem;
+  display: grid;
+  gap: .45rem;
+}
+.compact-grid {
+  display: grid;
+  gap: .18rem;
+}
+.compact-grid.two-cols {
+  grid-template-columns: 1fr 1fr;
+  gap: .45rem;
+}
+.compact-label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: .02em;
+}
+.compact-control {
+  height: 30px;
+  min-height: 30px;
+  padding: .24rem .55rem;
+  font-size: .8rem;
+}
+.compact-footer {
+  padding: .65rem 1rem;
+}
 
 /* Responsive */
 @media (max-width: 640px) {
@@ -1064,4 +1141,6 @@ textarea.form-control { resize: vertical; min-height: 90px; }
   .table-wrapper { border-radius: var(--radius); }
   .toolbar-user-sub { display: none; }
   .btn-logout { display: none; }
+  .compact-grid.two-cols { grid-template-columns: 1fr; }
+  .acesso-cell { justify-content: flex-start; }
 }
