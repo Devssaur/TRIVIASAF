@@ -1,143 +1,74 @@
+from flask import Blueprint, request, jsonify
 import os
+from supabase import create_client, Client
 from datetime import datetime, timezone
-from flask import Blueprint, jsonify, request
-from supabase import Client, create_client
 
-ccm_bp = Blueprint("ccm_bp", __name__)
-
-STATUS_PENDENTE = "ABERTA"
-STATUS_COMPLEMENTO = "DEVOLVIDA"
-STATUS_CONFIRMADO = "APROVADA"
-STATUS_CANCELADO = "CANCELADA"
-
-STATUS_PERMITIDOS = {"Necessário Complemento", "Confirmado", "Cancelado"}
-
+ccm_bp = Blueprint('ccm', __name__)
 
 def _get_supabase_client() -> Client:
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
 
-    if not supabase_url or not supabase_key:
+    if not url or not key:
         raise RuntimeError("Variaveis SUPABASE_URL e SUPABASE_KEY nao configuradas.")
 
-    return create_client(supabase_url, supabase_key)
+    return create_client(url, key)
 
-
-@ccm_bp.route("/pendentes", methods=["GET"])
+# ==========================================
+# 1. ROTA GET: Listar SAFs Pendentes
+# ==========================================
+@ccm_bp.route('/pendentes', methods=['GET'])
 def listar_pendentes():
     try:
         supabase = _get_supabase_client()
-
-        resposta = (
-            supabase.table("saf_solicitacoes")
-            .select("id, titulo, descricao_falha, prioridade, usuarios(nome)")
+        # Faz um JOIN inteligente: Traz o controle que está 'ABERTA' 
+        # e embute os detalhes da tabela principal (saf_solicitacoes)
+        resposta = supabase.table('saf_controle_ccm') \
+            .select('solicitacao_id, status, criado_em, saf_solicitacoes(ticket_saf, titulo_falha, equipamento, prioridade)') \
+            .eq('status', 'ABERTA') \
             .execute()
-        )
-
+        
         return jsonify(resposta.data), 200
-
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
-
-@ccm_bp.route("/avaliar/<saf_id>", methods=["POST"])
-def avaliar_saf(saf_id):
-    """Avalia uma SAF: Necessário Complemento, Confirmado ou Cancelado."""
-    payload = request.get_json(silent=True) or {}
-    status_recebido = payload.get("status")
-    motivo_complemento = payload.get("motivo_complemento")
-    motivo_cancelamento = payload.get("motivo_cancelamento")
-    avaliado_por = payload.get("avaliado_por_id")
-
-    if not status_recebido or status_recebido not in STATUS_PERMITIDOS:
-        return (
-            jsonify(
-                {
-                    "erro": f"Status invalido. Use um dos: {sorted(STATUS_PERMITIDOS)}"
-                }
-            ),
-            400,
-        )
-
-    if not avaliado_por:
-        return jsonify({"erro": "Campo 'avaliado_por_id' e obrigatorio."}), 400
-
-    if status_recebido == "Necessário Complemento" and not motivo_complemento:
-        return jsonify({"erro": "'motivo_complemento' e obrigatorio para este status."}), 400
-
-    if status_recebido == "Cancelado" and not motivo_cancelamento:
-        return jsonify({"erro": "'motivo_cancelamento' e obrigatorio para este status."}), 400
+# ==========================================
+# 2. ROTA PUT: Avaliar a SAF (Aprovar/Devolver)
+# ==========================================
+@ccm_bp.route('/avaliar/<string:solicitacao_id>', methods=['PUT'])
+def avaliar_saf(solicitacao_id):
+    dados = request.json
+    novo_status = dados.get('status')
+    motivo = dados.get('motivo_devolucao')
+    avaliador_id = dados.get('avaliador_id') # UUID de quem está avaliando (Maria do CCM)
 
     try:
         supabase = _get_supabase_client()
+        # Prepara a "maleta" de dados para atualizar
+        update_data = {
+            "status": novo_status,
+            "avaliado_por": avaliador_id,
+            "data_avaliacao": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Se for devolvida, adiciona o motivo na maleta
+        if novo_status == 'DEVOLVIDA':
+            update_data["motivo_devolucao"] = motivo
 
-        # Verifica se a SAF existe
-        existente = (
-            supabase.table("saf_controle_ccm")
-            .select("solicitacao_id, status")
-            .eq("solicitacao_id", saf_id)
-            .limit(1)
+        # Atualiza a tabela de controle
+        resposta = supabase.table('saf_controle_ccm') \
+            .update(update_data) \
+            .eq('solicitacao_id', solicitacao_id) \
             .execute()
-        )
 
-        if not existente.data:
-            return jsonify({"erro": "SAF nao encontrada."}), 404
+        # Registra a ação na Tabela de Auditoria
+        supabase.table('logs_auditoria').insert({
+            "usuario_id": avaliador_id,
+            "evento": f"AVALIACAO_CCM_{novo_status}",
+            "payload": update_data
+        }).execute()
 
-        status_atual = existente.data[0]["status"]
-        if status_atual in (STATUS_CONFIRMADO, STATUS_CANCELADO):
-            return (
-                jsonify(
-                    {
-                        "erro": f"SAF ja encerrada com status '{status_atual}'. Nenhuma alteracao permitida."
-                    }
-                ),
-                409,
-            )
-
-        agora = datetime.now(timezone.utc).isoformat()
-
-        # Monta o payload de atualização conforme o status recebido
-        if status_recebido == "Necessário Complemento":
-            dados_atualizacao = {
-                "status": STATUS_COMPLEMENTO,
-                "motivo_devolucao": motivo_complemento,
-                "avaliado_por": avaliado_por,
-                "data_avaliacao": agora,
-            }
-
-        elif status_recebido == "Confirmado":
-            # Futuramente: disparar integracao SAP aqui
-            dados_atualizacao = {
-                "status": STATUS_CONFIRMADO,
-                "motivo_devolucao": None,
-                "avaliado_por": avaliado_por,
-                "data_avaliacao": agora,
-            }
-
-        else:  # Cancelado
-            dados_atualizacao = {
-                "status": STATUS_CANCELADO,
-                "motivo_cancelamento": motivo_cancelamento,
-                "avaliado_por": avaliado_por,
-                "data_avaliacao": agora,
-            }
-
-        supabase.table("saf_controle_ccm").update(dados_atualizacao).eq(
-            "solicitacao_id", saf_id
-        ).execute()
-
-        return (
-            jsonify(
-                {
-                    "mensagem": f"SAF avaliada com sucesso. Novo status: {dados_atualizacao['status']}",
-                    "saf_id": saf_id,
-                    "status": dados_atualizacao["status"],
-                    "avaliado_por": avaliado_por,
-                    "data_avaliacao": agora,
-                }
-            ),
-            200,
-        )
+        return jsonify({"mensagem": f"SAF atualizada para {novo_status} com sucesso!"}), 200
 
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        return jsonify({"erro": str(e)}), 400

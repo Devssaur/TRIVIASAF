@@ -1,13 +1,15 @@
 import os
 from flask import Flask, jsonify
 from dotenv import load_dotenv
+
+# Carrega as variaveis antes de importar modulos que dependem delas.
+load_dotenv()
+
 from routes.auth import auth_bp
 from routes.solicitacoes import solicitacoes_bp
 from routes.dados_mestres import dados_bp
 from routes.ccm import ccm_bp
-
-# 1. Carrega as variáveis do arquivo .env
-load_dotenv()
+from routes.sap import sap_bp
 
 app = Flask(__name__)
 
@@ -16,6 +18,7 @@ app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(solicitacoes_bp, url_prefix='/api/solicitacoes')
 app.register_blueprint(dados_bp, url_prefix='/api/dados')
 app.register_blueprint(ccm_bp, url_prefix='/api/ccm')
+app.register_blueprint(sap_bp, url_prefix='/api/sap')
 
 @app.route("/")
 def index():
