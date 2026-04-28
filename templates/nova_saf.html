@@ -425,29 +425,28 @@
                style="width:100%;max-height:300px;object-fit:contain;display:block;">
           <div style="position:absolute;bottom:0;left:0;right:0;
                       background:linear-gradient(transparent,rgba(0,0,0,.75));padding:.75rem 1rem;">
-            <div id="geo-status" style="display:none;align-items:center;gap:8px;
-                                        color:#fff;font-size:.78rem;font-weight:600;">
-              <span>&#128205;</span><span id="geo-coords"></span>
-              <a id="btn-ver-mapa" href="#" target="_blank" rel="noopener noreferrer"
-                 style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;
-                        color:#fff;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
-                        border-radius:4px;padding:2px 7px;text-decoration:none;white-space:nowrap;
-                        transition:background .15s;"
-                 onmouseover="this.style.background='rgba(255,255,255,.3)'"
-                 onmouseout="this.style.background='rgba(255,255,255,.18)'">
-                &#127759; Ver no Mapa
-              </a>
-            </div>
+            <div id="geo-status" style="display:none;"></div>
             <div id="geo-error" style="display:none;color:rgba(255,255,255,.65);font-size:.75rem;">
               &#8505;&#65039; GPS n&atilde;o dispon&iacute;vel &mdash; foto salva sem coordenadas
             </div>
           </div>
         </div>
-        <div style="display:flex;gap:.5rem;margin-top:.625rem;justify-content:flex-end;align-items:center;">
-          <span style="font-size:.78rem;color:var(--green);font-weight:600;">&#10003; Foto capturada</span>
-          <button type="button" id="btn-retake" class="btn btn-outline btn-sm">
-            &#8635; Tirar Novamente
-          </button>
+        <div style="display:flex;gap:.5rem;margin-top:.625rem;justify-content:space-between;align-items:center;">
+          <a id="btn-ver-mapa" href="#" target="_blank" rel="noopener noreferrer"
+             style="display:none;align-items:center;gap:4px;font-size:.8rem;font-weight:600;
+                    color:var(--primary);text-decoration:none;border:1px solid var(--border);
+                    border-radius:var(--radius);padding:4px 10px;background:var(--surface);
+                    white-space:nowrap;transition:background .15s;"
+             onmouseover="this.style.background='var(--bg)'"
+             onmouseout="this.style.background='var(--surface)'">
+            &#127759; Ver no Mapa
+          </a>
+          <div style="display:flex;gap:.5rem;align-items:center;">
+            <span style="font-size:.78rem;color:var(--green);font-weight:600;">&#10003; Foto capturada</span>
+            <button type="button" id="btn-retake" class="btn btn-outline btn-sm">
+              &#8635; Tirar Novamente
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1146,14 +1145,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('cam-photo-result').classList.remove('hidden');
 
     const geoStatus = document.getElementById('geo-status');
-    const geoCoords = document.getElementById('geo-coords');
     const geoError  = document.getElementById('geo-error');
     if (gps) {
-      geoCoords.textContent = `Lat ${gps.lat}, Lng ${gps.lng}  (\xb1${gps.acc}m)`;
-      geoStatus.style.display = 'flex';
+      geoStatus.style.display = 'none';
       geoError.style.display  = 'none';
       const btnMapa = document.getElementById('btn-ver-mapa');
-      if (btnMapa) btnMapa.href = `https://www.google.com/maps?q=${gps.lat},${gps.lng}&z=17`;
+      if (btnMapa) { btnMapa.href = `https://www.google.com/maps?q=${gps.lat},${gps.lng}&z=17`; btnMapa.style.display = 'inline-flex'; }
     } else {
       geoStatus.style.display = 'none';
       geoError.style.display  = 'block';
@@ -1168,6 +1165,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   document.getElementById('btn-retake').addEventListener('click', function () {
     window._capturedPhoto = null;
     ['foto_lat','foto_lng','foto_acc'].forEach(id => document.getElementById(id).value = '');
+      const bm = document.getElementById('btn-ver-mapa'); if (bm) { bm.style.display = 'none'; bm.href = '#'; }
     document.getElementById('cam-no-photo').classList.remove('hidden');
     document.getElementById('cam-photo-result').classList.add('hidden');
     checkFormValid();
