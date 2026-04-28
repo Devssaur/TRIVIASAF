@@ -30,16 +30,72 @@
     <input type="hidden" id="foto_lng"              name="foto_lng">
     <input type="hidden" id="foto_acc"              name="foto_acc">
 
-    <!-- ① O QUE ESTÁ ACONTECENDO? -->
+    <!-- ① TIPO DE ATENDIMENTO -->
     <div class="form-section">
       <div class="form-section-title">
-        <span class="section-num">1</span> O que est&aacute; acontecendo?
+        <span class="section-num">1</span> Tipo de atendimento
+      </div>
+
+      <div class="form-group">
+        <style>
+          .tipo-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: .6rem;
+            margin-top: .4rem;
+          }
+          @media (max-width: 520px) {
+            .tipo-grid { grid-template-columns: repeat(2, 1fr); }
+          }
+          .tipo-btn {
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: .72rem .5rem;
+            font-weight: 700;
+            font-size: .84rem;
+            cursor: pointer;
+            transition: border-color .15s, background .15s, box-shadow .15s;
+          }
+          .tipo-btn:hover {
+            border-color: var(--primary);
+            background: rgba(27,42,94,.04);
+          }
+          .tipo-btn.selected {
+            border-color: var(--primary);
+            background: rgba(27,42,94,.08);
+            box-shadow: 0 0 0 3px rgba(27,42,94,.12);
+          }
+          .step-locked {
+            opacity: .56;
+            pointer-events: none;
+            user-select: none;
+          }
+        </style>
+
+        <div class="tipo-grid">
+          <button type="button" class="tipo-btn" data-tipo="ESTACAO">Esta&ccedil;&atilde;o</button>
+          <button type="button" class="tipo-btn" data-tipo="MRO">MRO</button>
+          <button type="button" class="tipo-btn" data-tipo="VIA">Via</button>
+          <button type="button" class="tipo-btn" data-tipo="OUTROS">Outros</button>
+        </div>
+
+        <span class="form-hint" style="display:block;margin-top:.35rem;">
+          Selecione <strong>Esta&ccedil;&atilde;o</strong> ou <strong>MRO</strong> para habilitar a pr&oacute;xima etapa.
+        </span>
+      </div>
+    </div>
+
+    <!-- ② QUAL LOCAL DE FALHA? -->
+    <div class="form-section step-locked" id="sec-oque">
+      <div class="form-section-title">
+        <span class="section-num">2</span> Qual local de falha?
       </div>
 
       <div class="form-group">
         <textarea id="descricao_falha" name="descricao_falha"
                   class="form-control" rows="3"
-                  placeholder="Ex: A bomba de &aacute;gua do po&ccedil;o n&ordm; 2 parou de funcionar e est&aacute; fazendo ru&iacute;do desde ontem..."></textarea>
+                  placeholder=""></textarea>
         <span class="form-hint" style="display:block;margin-top:.3rem;">
           Mencione o local e o que observou. Se selecionar o sintoma abaixo, este campo &eacute; opcional.
         </span>
@@ -49,14 +105,14 @@
       <!-- Cards de sugest&atilde;o (aparecem ao digitar) -->
       <div id="suggest-area" style="display:none;margin-top:.875rem;">
         <p style="font-size:.8rem;font-weight:700;color:var(--primary);margin-bottom:.5rem;">
-          &#128204; O sistema identificou os seguintes equipamentos &mdash; selecione o correto:
+           O sistema identificou os seguintes equipamentos  selecione o correto:
         </p>
         <p id="suggest-loading" style="display:none;font-size:.82rem;color:var(--text-muted);padding:.4rem 0;">
-          &#128269; Buscando...
+           Buscando...
         </p>
         <div id="suggest-list" style="display:flex;flex-direction:column;gap:.45rem;"></div>
         <p id="suggest-empty"   style="display:none;font-size:.82rem;color:var(--text-muted);padding:.4rem 0;">
-          Nenhum resultado. Use &ldquo;Especificar manualmente&rdquo; abaixo.
+          Nenhum resultado. Use Especificar manualmente abaixo.
         </p>
       </div>
 
@@ -97,18 +153,40 @@
           </p>
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" for="man-local">Local de Instala&ccedil;&atilde;o</label>
-              <select id="man-local" class="form-control">
-                <option value="">Carregando...</option>
-              </select>
+              <label class="form-label" for="man-local" id="man-local-label">Local de Instalação</label>
+              <div id="man-local-select-wrap">
+                <select id="man-local" class="form-control">
+                  <option value="">Carregando...</option>
+                </select>
+              </div>
+              <div id="man-linha-input-wrap" style="display:none;">
+                <select id="man-linha-select" class="form-control">
+                  <option value="">Selecione a linha</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                  <option value="13">13</option>
+                </select>
+              </div>
             </div>
             <div class="form-group">
-              <label class="form-label" for="man-equip">Equipamento</label>
+              <label class="form-label" for="man-equip" id="man-equip-label">Equipamento</label>
               <select id="man-equip" class="form-control" disabled>
                 <option value="">Selecione o local primeiro</option>
               </select>
             </div>
           </div>
+
+          <div class="form-grid" id="via-extra-fields" style="display:none;">
+            <div class="form-group">
+              <label class="form-label" for="via-km">KM</label>
+              <select id="via-km" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="via-poste">Poste</label>
+              <select id="via-poste" class="form-control"></select>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="man-sintoma">
               Sintoma / Dano
@@ -126,10 +204,45 @@
       </span>
     </div>
 
-    <!-- ② QUANDO E QUAL O IMPACTO? -->
+    <!-- ③ DESCRIÇÃO DA FALHA -->
     <div class="form-section">
       <div class="form-section-title">
-        <span class="section-num">2</span> Quando e qual o impacto?
+        <span class="section-num">3</span> Descrição da falha
+      </div>
+
+      <p class="form-hint" style="margin:0;">
+        Se necessário, informe abaixo se houve ocorrência com cliente.
+      </p>
+    </div>
+
+    <style>
+      .ocorrencia-checkbox {
+        width: 16px;
+        height: 16px;
+        accent-color: #fca5a5;
+      }
+    </style>
+
+    <div class="form-section" id="sec-ocorrencia-cliente">
+      <div class="form-group" style="margin-bottom:.85rem;">
+        <label class="form-label" for="ocorrencia_cliente" style="display:flex;align-items:center;gap:.45rem;cursor:pointer;">
+          <input type="checkbox" id="ocorrencia_cliente" name="ocorrencia_cliente" class="ocorrencia-checkbox">
+          Houve ocorrência com cliente?
+        </label>
+      </div>
+
+      <div class="form-group" id="descricao-ocorrencia-wrap" style="display:none;">
+        <label class="form-label" for="descricao_ocorrencia">Descreva a ocorrência</label>
+        <textarea id="descricao_ocorrencia" name="descricao_ocorrencia"
+                  class="form-control" rows="3"
+                  placeholder="Descreva a ocorrência"></textarea>
+      </div>
+    </div>
+
+    <!-- ④ QUANDO E QUAL O IMPACTO? -->
+    <div class="form-section">
+      <div class="form-section-title">
+        <span class="section-num">4</span> Quando e qual o impacto?
       </div>
 
       <div class="form-grid" style="margin-bottom:1.25rem;">
@@ -139,15 +252,15 @@
           </label>
           <input type="date" id="data_inicio_avaria" name="data_inicio_avaria"
                  class="form-control" required>
-          <span class="form-error">Campo obrigat&oacute;rio.</span>
+          <span class="form-error">Campo obrigatório.</span>
         </div>
         <div class="form-group">
           <label class="form-label" for="hora_inicio_avaria">
-            Hora de in&iacute;cio&nbsp;<span class="required">*</span>
+            Hora de início&nbsp;<span class="required">*</span>
           </label>
           <input type="time" id="hora_inicio_avaria" name="hora_inicio_avaria"
                  class="form-control" required>
-          <span class="form-error">Campo obrigat&oacute;rio.</span>
+          <span class="form-error">Campo obrigatório.</span>
         </div>
       </div>
 
@@ -275,10 +388,10 @@
       </div>
     </div>
 
-    <!-- ③ FOTO DO PROBLEMA (obrigatória) -->
+    <!-- ④ FOTO DO PROBLEMA (obrigatória) -->
     <div class="form-section">
       <div class="form-section-title">
-        <span class="section-num">3</span> Foto do Problema
+        <span class="section-num">5</span> Foto do Problema
         <span class="required" style="font-size:.75rem;font-weight:700;">*</span>
         <span style="font-size:.73rem;font-weight:400;color:var(--text-muted);margin-left:4px;">(obrigat&oacute;ria)</span>
       </div>
@@ -456,11 +569,176 @@ document.addEventListener('DOMContentLoaded', async function () {
   let _camStream    = null;
   let _sugestaoSel  = null;   // selected suggestion object { equip_id, equip_nome, local_id, local_nome, sintoma_id, sintoma_nome }
   let _suggestTimer = null;
+  let _tipoSelecionado = '';
   const btnSubmit  = document.getElementById('btn-submit');
   const prioHidden = document.getElementById('prioridade');
+  const secOQue = document.getElementById('sec-oque');
+  const manLocalLabel = document.getElementById('man-local-label');
+  const manEquipLabel = document.getElementById('man-equip-label');
+  const manLocalSelectWrap = document.getElementById('man-local-select-wrap');
+  const manLinhaInputWrap = document.getElementById('man-linha-input-wrap');
+  const manLinhaSelect = document.getElementById('man-linha-select');
+  const viaExtraFields = document.getElementById('via-extra-fields');
+  const viaKmSel = document.getElementById('via-km');
+  const viaPosteSel = document.getElementById('via-poste');
+  const ocorrenciaCheckbox = document.getElementById('ocorrencia_cliente');
+  const descricaoOcorrenciaWrap = document.getElementById('descricao-ocorrencia-wrap');
+  const descricaoOcorrenciaInput = document.getElementById('descricao_ocorrencia');
+
+  function setViaLineOptions() {
+    manLinhaSelect.innerHTML = [
+      '<option value="">Selecione a linha</option>',
+      '<option value="11">11</option>',
+      '<option value="12">12</option>',
+      '<option value="13">13</option>'
+    ].join('');
+  }
+
+  function isFluxoHabilitado() {
+    return _tipoSelecionado === 'ESTACAO' || _tipoSelecionado === 'MRO' || _tipoSelecionado === 'VIA';
+  }
+
+  function fillZeroTo99(selectEl, placeholder) {
+    if (!selectEl) return;
+    const opts = [`<option value="">${placeholder}</option>`];
+    for (let i = 0; i <= 99; i += 1) {
+      const v = String(i).padStart(2, '0');
+      opts.push(`<option value="${v}">${v}</option>`);
+    }
+    selectEl.innerHTML = opts.join('');
+  }
+
+  fillZeroTo99(viaKmSel, 'Selecione o KM');
+  fillZeroTo99(viaPosteSel, 'Selecione o poste');
+  setViaLineOptions();
+
+  function toggleDescricaoOcorrencia() {
+    if (!ocorrenciaCheckbox || !descricaoOcorrenciaWrap || !descricaoOcorrenciaInput) return;
+    if (ocorrenciaCheckbox.checked) {
+      descricaoOcorrenciaWrap.style.display = 'block';
+      return;
+    }
+    descricaoOcorrenciaWrap.style.display = 'none';
+    descricaoOcorrenciaInput.value = '';
+  }
+
+  if (ocorrenciaCheckbox) {
+    ocorrenciaCheckbox.addEventListener('change', toggleDescricaoOcorrencia);
+    toggleDescricaoOcorrencia();
+  }
+
+  function updateFluxoUi() {
+    const desc = document.getElementById('descricao_falha');
+    const btnToggleManual = document.getElementById('btn-toggle-manual');
+    const sinSel = document.getElementById('man-sintoma');
+
+    if (_tipoSelecionado === 'MRO') {
+      desc.placeholder = 'Digite o prefixo do trem para localizar a frota...';
+      manLocalLabel.textContent = 'Série de trem';
+      manEquipLabel.textContent = 'Prefixo';
+      manLocalSelectWrap.style.display = 'block';
+      manLinhaInputWrap.style.display = 'none';
+      viaExtraFields.style.display = 'none';
+      btnToggleManual.innerHTML = '<span id="manual-icon" style="display:inline-block;transition:transform .2s;">&#9654;</span> N&atilde;o encontrou? Especifique manualmente';
+      sinSel.innerHTML = '<option value="">N&atilde;o aplic&aacute;vel para MRO</option>';
+      sinSel.disabled = true;
+    } else if (_tipoSelecionado === 'VIA') {
+      desc.placeholder = 'Digite o trecho para busca inteligente (descricao da via)...';
+      manLocalLabel.textContent = 'Linha';
+      manEquipLabel.textContent = 'Trecho';
+      manLocalSelectWrap.style.display = 'none';
+      manLinhaInputWrap.style.display = 'block';
+      viaExtraFields.style.display = 'grid';
+      btnToggleManual.innerHTML = '<span id="manual-icon" style="display:inline-block;transition:transform .2s;">&#9654;</span> N&atilde;o encontrou? Especifique manualmente';
+      sinSel.innerHTML = '<option value="">N&atilde;o aplic&aacute;vel para Via</option>';
+      sinSel.disabled = true;
+    } else if (_tipoSelecionado === 'ESTACAO') {
+      desc.placeholder = 'EX: Estação, Base';
+      manLocalLabel.textContent = 'Local de instalação';
+      manEquipLabel.textContent = 'Equipamento';
+      manLocalSelectWrap.style.display = 'block';
+      manLinhaInputWrap.style.display = 'none';
+      viaExtraFields.style.display = 'none';
+      btnToggleManual.innerHTML = '<span id="manual-icon" style="display:inline-block;transition:transform .2s;">&#9654;</span> N&atilde;o encontrou? Especifique manualmente';
+    } else {
+      desc.placeholder = 'EX: Estacao, Base';
+      manLocalLabel.textContent = 'Local de instalação';
+      manEquipLabel.textContent = 'Equipamento';
+      manLocalSelectWrap.style.display = 'block';
+      manLinhaInputWrap.style.display = 'none';
+      viaExtraFields.style.display = 'none';
+      btnToggleManual.innerHTML = '<span id="manual-icon" style="display:inline-block;transition:transform .2s;">&#9654;</span> N&atilde;o encontrou? Especifique manualmente';
+    }
+  }
+
+  function resetManualMroState() {
+    manualOpen = false;
+    manualLoaded = false;
+    document.getElementById('manual-section').style.display = 'none';
+    document.getElementById('manual-icon').style.transform = '';
+    document.getElementById('man-local').innerHTML = '<option value="">Carregando...</option>';
+    document.getElementById('man-equip').innerHTML = '<option value="">Selecione o local primeiro</option>';
+    document.getElementById('man-equip').disabled = true;
+    document.getElementById('man-sintoma').innerHTML = '<option value="">Selecione o equipamento primeiro</option>';
+    document.getElementById('man-sintoma').disabled = true;
+    setViaLineOptions();
+    manLinhaSelect.value = '';
+    fillZeroTo99(viaKmSel, 'Selecione o KM');
+    fillZeroTo99(viaPosteSel, 'Selecione o poste');
+    limparSelecao();
+  }
+
+  function resetEtapaOQue() {
+    clearTimeout(_suggestTimer);
+    document.getElementById('descricao_falha').value = '';
+    document.getElementById('desc-error').style.display = 'none';
+    document.getElementById('equip-error').style.display = 'none';
+    document.getElementById('suggest-area').style.display = 'none';
+    document.getElementById('suggest-list').innerHTML = '';
+    document.getElementById('suggest-loading').style.display = 'none';
+    document.getElementById('suggest-empty').style.display = 'none';
+    limparSelecao();
+  }
+
+  function bloquearEtapaOQue() {
+    secOQue.classList.add('step-locked');
+    document.getElementById('suggest-area').style.display = 'none';
+    document.getElementById('suggest-list').innerHTML = '';
+    document.getElementById('suggest-loading').style.display = 'none';
+    document.getElementById('suggest-empty').style.display = 'none';
+  }
+
+  function habilitarEtapaOQue() {
+    secOQue.classList.remove('step-locked');
+  }
+
+  document.querySelectorAll('.tipo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tipo = btn.dataset.tipo || '';
+
+      document.querySelectorAll('.tipo-btn').forEach(b => {
+        b.classList.toggle('selected', b === btn);
+      });
+
+      _tipoSelecionado = tipo;
+      updateFluxoUi();
+      resetEtapaOQue();
+      resetManualMroState();
+
+      if (tipo === 'ESTACAO' || tipo === 'MRO' || tipo === 'VIA') {
+        habilitarEtapaOQue();
+      } else {
+        bloquearEtapaOQue();
+        Toast.info('Fluxo em configuracao. Por enquanto, use Estacao, MRO ou Via.');
+      }
+
+      checkFormValid();
+    });
+  });
 
   // ── Validation ────────────────────────────────────
   function checkFormValid() {
+    const hasTipoValido = isFluxoHabilitado();
     const hasSintoma = (document.getElementById('sintoma_id').value || '') !== '';
     const hasDesc    = hasSintoma
                      || (document.getElementById('descricao_falha').value || '').trim().length >= 3;
@@ -469,7 +747,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const hasDate    = document.getElementById('data_inicio_avaria').value !== ''
                     && document.getElementById('hora_inicio_avaria').value !== '';
     const hasPhoto   = !!window._capturedPhoto;
-    btnSubmit.disabled = !(hasDesc && hasEquip && hasPrio && hasDate && hasPhoto);
+    btnSubmit.disabled = !(hasTipoValido && hasDesc && hasEquip && hasPrio && hasDate && hasPhoto);
   }
 
   // ── Urgency buttons ───────────────────────────────
@@ -525,7 +803,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         'border:1.5px solid var(--border);border-radius:var(--radius-lg);',
         'background:var(--surface);padding:.75rem 1rem;transition:border-color .15s,background .15s;'
       ].join('');
-      const icon = s.tipo === 'sintoma' ? '\uD83D\uDCA1' : '\uD83D\uDD27';
+      const icon = s.tipo === 'sintoma' ? '\uD83D\uDCA1' : (s.tipo === 'trem' ? '\uD83D\uDE86' : (s.tipo === 'via' ? '\uD83D\uDEE4\uFE0F' : '\uD83D\uDD27'));
       btn.innerHTML = `
         <span style="font-size:1.4rem;flex-shrink:0;">${icon}</span>
         <div style="flex:1;min-width:0;">
@@ -533,7 +811,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             ${escHtml(s.equip_nome || s.sintoma_nome || '')}
           </div>
           ${s.local_nome
-            ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px;">&#128205; ${escHtml(s.local_nome)}</div>`
+            ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px;">${_tipoSelecionado === 'MRO' ? 'S&eacute;rie: ' : '&#128205; '}${escHtml(s.local_nome)}</div>`
             : ''}
           ${(s.sintoma_nome && s.tipo !== 'sintoma')
             ? `<div style="font-size:.78rem;color:var(--primary);margin-top:2px;font-weight:600;">Sintoma: ${escHtml(s.sintoma_nome)}</div>`
@@ -587,6 +865,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   // Debounced search as user types the description
   document.getElementById('descricao_falha').addEventListener('input', function () {
     checkFormValid();
+    if (!isFluxoHabilitado()) return;
     if (_sugestaoSel) return; // already confirmed
     clearTimeout(_suggestTimer);
     const q = this.value.trim();
@@ -600,7 +879,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('suggest-area').style.display   = 'block';
     _suggestTimer = setTimeout(async () => {
       const gps = window._gpsPosition;
-      const res = await API.sugerir(q, gps?.lat, gps?.lng);
+      const res = await API.sugerir(q, gps?.lat, gps?.lng, _tipoSelecionado);
       if (res.ok && res.data.sugestoes) {
         renderSugestoes(res.data.sugestoes);
       } else {
@@ -615,16 +894,21 @@ document.addEventListener('DOMContentLoaded', async function () {
   let manualLoaded = false;
 
   document.getElementById('btn-toggle-manual').addEventListener('click', async function () {
+    if (!isFluxoHabilitado()) return;
     manualOpen = !manualOpen;
     document.getElementById('manual-section').style.display = manualOpen ? 'block' : 'none';
     document.getElementById('manual-icon').style.transform  = manualOpen ? 'rotate(90deg)' : '';
 
     if (manualOpen && !manualLoaded) {
       manualLoaded = true;
-      const res = await API.locais();
+      const res = await API.locais(_tipoSelecionado);
       const sel = document.getElementById('man-local');
-      if (res.ok && res.data.locais?.length) {
-        sel.innerHTML = '<option value="">Selecione o local</option>' +
+      if (_tipoSelecionado === 'VIA') {
+        setViaLineOptions();
+        manLinhaSelect.value = '';
+        document.getElementById('man-equip').innerHTML = '<option value="">Selecione a linha primeiro</option>';
+      } else if (res.ok && res.data.locais?.length) {
+        sel.innerHTML = `<option value="">${_tipoSelecionado === 'MRO' ? 'Selecione a s&eacute;rie' : 'Selecione o local'}</option>` +
           res.data.locais.map(l =>
             `<option value="${l.id}">${l.codigo ? escHtml(l.codigo) + ' \u2013 ' : ''}${escHtml(l.descricao)}</option>`
           ).join('');
@@ -634,13 +918,49 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   });
 
+  manLinhaSelect.addEventListener('change', async function () {
+    if (_tipoSelecionado !== 'VIA') return;
+    const linha = (this.value || '').trim();
+    const eqSel = document.getElementById('man-equip');
+    eqSel.innerHTML = '<option value="">Carregando...</option>';
+    eqSel.disabled = true;
+
+    document.getElementById('local_instalacao_id').value = '';
+    document.getElementById('local_instalacao_nome').value = '';
+    document.getElementById('equipamento_id').value = '';
+    document.getElementById('equipamento_nome').value = '';
+    document.getElementById('sintoma_id').value = '';
+
+    if (!linha) {
+      eqSel.innerHTML = '<option value="">Selecione a linha primeiro</option>';
+      checkFormValid();
+      return;
+    }
+
+    const res = await API.equipamentos(linha, 'VIA');
+    if (res.ok && res.data.equipamentos?.length) {
+      eqSel.innerHTML = '<option value="">Selecione o trecho</option>' +
+        res.data.equipamentos.map(e =>
+          `<option value="${e.id}">${escHtml(e.descricao)}</option>`
+        ).join('');
+      eqSel.disabled = false;
+    } else {
+      eqSel.innerHTML = '<option value="">Nenhum trecho encontrado</option>';
+    }
+    checkFormValid();
+  });
+
   document.getElementById('man-local').addEventListener('change', async function () {
     const lid    = this.value;
     const eqSel  = document.getElementById('man-equip');
     const sinSel = document.getElementById('man-sintoma');
     eqSel.innerHTML   = '<option value="">Carregando...</option>';
     eqSel.disabled    = true;
-    sinSel.innerHTML  = '<option value="">Selecione o equipamento primeiro</option>';
+    sinSel.innerHTML  = _tipoSelecionado === 'MRO'
+      ? '<option value="">N&atilde;o aplic&aacute;vel para MRO</option>'
+      : _tipoSelecionado === 'VIA'
+      ? '<option value="">N&atilde;o aplic&aacute;vel para Via</option>'
+      : '<option value="">Selecione o equipamento primeiro</option>';
     sinSel.disabled   = true;
     _sugestaoSel      = null;
     document.getElementById('selected-card').style.display = 'none';
@@ -649,10 +969,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('equipamento_id').value        = '';
     document.getElementById('equipamento_nome').value      = '';
     document.getElementById('sintoma_id').value            = '';
-    if (!lid) { eqSel.innerHTML = '<option value="">Selecione o local primeiro</option>'; checkFormValid(); return; }
-    const res = await API.equipamentos(lid);
+    if (!lid) {
+      eqSel.innerHTML = `<option value="">${_tipoSelecionado === 'MRO' ? 'Selecione a s&eacute;rie primeiro' : 'Selecione o local primeiro'}</option>`;
+      checkFormValid();
+      return;
+    }
+    const res = await API.equipamentos(lid, _tipoSelecionado);
     if (res.ok && res.data.equipamentos?.length) {
-      eqSel.innerHTML = '<option value="">Selecione o equipamento</option>' +
+      eqSel.innerHTML = `<option value="">${_tipoSelecionado === 'MRO' ? 'Selecione o prefixo' : 'Selecione o equipamento'}</option>` +
         res.data.equipamentos.map(e =>
           `<option value="${e.id}">${e.codigo ? escHtml(e.codigo) + ' \u2013 ' : ''}${escHtml(e.descricao)}</option>`
         ).join('');
@@ -670,6 +994,26 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('equipamento_nome').value = eid ? this.options[this.selectedIndex].text : '';
     _sugestaoSel = null;
     document.getElementById('selected-card').style.display = 'none';
+
+    if (_tipoSelecionado === 'MRO' || _tipoSelecionado === 'VIA') {
+      sinSel.innerHTML = '<option value="">N&atilde;o aplic&aacute;vel para MRO</option>';
+      if (_tipoSelecionado === 'VIA') {
+        sinSel.innerHTML = '<option value="">N&atilde;o aplic&aacute;vel para Via</option>';
+        const linha = (manLinhaSelect.value || '').trim();
+        const trechoTxt = eid ? this.options[this.selectedIndex].text : '';
+        const km = viaKmSel.value;
+        const poste = viaPosteSel.value;
+        document.getElementById('local_instalacao_id').value = eid || '';
+        document.getElementById('local_instalacao_nome').value = trechoTxt ? `Linha ${linha} - ${trechoTxt}` : '';
+        document.getElementById('equipamento_id').value = eid || '';
+        document.getElementById('equipamento_nome').value = trechoTxt ? `${trechoTxt}${km ? ` | KM ${km}` : ''}${poste ? ` | Poste ${poste}` : ''}` : '';
+      }
+      sinSel.disabled = true;
+      document.getElementById('sintoma_id').value = '';
+      checkFormValid();
+      return;
+    }
+
     sinSel.innerHTML = '<option value="">Carregando...</option>';
     sinSel.disabled  = true;
     if (!eid) { sinSel.innerHTML = '<option value="">Selecione o equipamento primeiro</option>'; checkFormValid(); return; }
@@ -690,6 +1034,20 @@ document.addEventListener('DOMContentLoaded', async function () {
   document.getElementById('man-sintoma').addEventListener('change', function () {
     document.getElementById('sintoma_id').value = this.value;
     checkFormValid();
+  });
+
+  [viaKmSel, viaPosteSel].forEach(sel => {
+    sel.addEventListener('change', function () {
+      if (_tipoSelecionado !== 'VIA') return;
+      const eid = document.getElementById('equipamento_id').value;
+      if (!eid) return;
+      const trechoTxt = document.getElementById('man-equip').options[document.getElementById('man-equip').selectedIndex]?.text || '';
+      const km = viaKmSel.value;
+      const poste = viaPosteSel.value;
+      document.getElementById('equipamento_nome').value = trechoTxt
+        ? `${trechoTxt}${km ? ` | KM ${km}` : ''}${poste ? ` | Poste ${poste}` : ''}`
+        : '';
+    });
   });
 
   // ── Camera ────────────────────────────────────────
@@ -800,6 +1158,11 @@ document.addEventListener('DOMContentLoaded', async function () {
   // ── Submit ────────────────────────────────────────
   document.getElementById('form-novasaf').addEventListener('submit', async function (e) {
     e.preventDefault();
+
+    if (!isFluxoHabilitado()) {
+      Toast.warning('Selecione Estacao, MRO ou Via na etapa 1 para continuar.');
+      return;
+    }
 
     const descricao  = (document.getElementById('descricao_falha').value || '').trim();
     const equipId    = document.getElementById('equipamento_id').value;
