@@ -13,6 +13,7 @@ import base64
 import logging
 import random
 import requests
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,14 @@ def _mock_qmnum() -> str:
 # ──────────────────────────────────────────────────────────────
 
 def _base_url() -> str:
-    return os.environ.get("SAP_BASE_URL", "").rstrip("/")
+    base = (os.environ.get("SAP_BASE_URL", "") or "").strip().rstrip("/")
+    if not base:
+        return ""
+
+    # Permite configurar apenas host (ex.: sap.empresa.com) e assume HTTPS.
+    if not urlparse(base).scheme:
+        base = f"https://{base.lstrip('/')}"
+    return base
 
 
 def _headers() -> dict:
@@ -57,9 +65,23 @@ def _verify_ssl() -> bool:
 
 def _endpoint(env_key: str, default_path: str) -> str:
     custom = os.environ.get(env_key, "").strip()
+    base = _base_url()
+
+    def _absolutize(url_or_path: str) -> str:
+        parsed = urlparse(url_or_path)
+        if parsed.scheme:
+            return url_or_path
+        if not base:
+            raise RuntimeError(
+                f"Configuracao SAP invalida: {env_key}='{url_or_path}' sem esquema e SAP_BASE_URL ausente."
+            )
+        if url_or_path.startswith("/"):
+            return f"{base}{url_or_path}"
+        return f"{base}/{url_or_path}"
+
     if custom:
-        return custom
-    return f"{_base_url()}{default_path}"
+        return _absolutize(custom)
+    return _absolutize(default_path)
 
 
 # ──────────────────────────────────────────────────────────────

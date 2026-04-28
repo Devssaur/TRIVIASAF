@@ -1,10 +1,10 @@
 -- =============================================================================
--- SEED DE DADOS TRIVIA – ARBORIZAÇÃO REAL SAP-PM
--- Baseado no treinamento "Processo SAP-PM" da TRIVIA Trens (Linhas 11/12/13)
+-- SEED DE DADOS MVP SAF – ARBORIZAÇÃO REAL SAP-PM
+-- Baseado no treinamento "Processo SAP-PM" da MVP SAF (Linhas 11/12/13)
 --
 -- Execute APÓS add_geo_grupo_catalogo.sql
 --
--- Estrutura do SAP-PM TRIVIA:
+-- Estrutura do SAP-PM MVP SAF:
 --   TV11 – Linha 11 Coral     | TV12 – Linha 12 Safira   | TV13 – Linha 13 Jade
 --   TV36 – Multilinhas 11/12/13
 --
@@ -38,12 +38,12 @@ WHERE codigo IN (
 );
 
 -- ─────────────────────────────────────────────────────────────
--- 1. LOCAIS DE INSTALAÇÃO (TPLNR) — Arborização real TRIVIA
+-- 1. LOCAIS DE INSTALAÇÃO (TPLNR) — Arborização real MVP SAF
 --    Nível: Sistemas de cada linha + equipes TV36
 --    id_sap = código TPLNR exato do SAP
 -- ─────────────────────────────────────────────────────────────
 
--- Remove locais anteriores da TRIVIA (se existirem) para evitar conflito
+-- Remove locais anteriores da MVP SAF (se existirem) para evitar conflito
 DELETE FROM equipamentos WHERE local_id_sap IN (
   'TV11','TV11-2','TV11-3','TV11-4','TV11-5','TV11-6','TV11-7','TV11-8',
   'TV12','TV12-2','TV12-3','TV12-4','TV12-5','TV12-6','TV12-7','TV12-8',
@@ -81,7 +81,7 @@ DELETE FROM locais_instalacao WHERE id_sap IN (
 INSERT INTO locais_instalacao (id_sap, codigo, descricao, ativo, sincronizado_em)
 VALUES
   -- ── Linha 11 – CORAL ────────────────────────────────────
-  ('TV11',    'TV11',    'TRIVIA TRENS LINHA 11 - CORAL',       true, now()),
+  ('TV11',    'TV11',    'MVP SAF LINHA 11 - CORAL',            true, now()),
   ('TV11-2',  'TV11-2',  'L11 - SISTEMA DE ENERGIA',            true, now()),
   ('TV11-3',  'TV11-3',  'L11 - SISTEMA DE REDE AÉREA',         true, now()),
   ('TV11-4',  'TV11-4',  'L11 - SISTEMA SINALIZAÇÃO',           true, now()),
@@ -91,7 +91,7 @@ VALUES
   ('TV11-8',  'TV11-8',  'L11 - SISTEMA AUXILIARES',            true, now()),
 
   -- ── Linha 12 – SAFIRA ───────────────────────────────────
-  ('TV12',    'TV12',    'TRIVIA TRENS LINHA 12 - SAFIRA',      true, now()),
+  ('TV12',    'TV12',    'MVP SAF LINHA 12 - SAFIRA',           true, now()),
   ('TV12-2',  'TV12-2',  'L12 - SISTEMA DE ENERGIA',            true, now()),
   ('TV12-3',  'TV12-3',  'L12 - SISTEMA DE REDE AÉREA',         true, now()),
   ('TV12-4',  'TV12-4',  'L12 - SISTEMA SINALIZAÇÃO',           true, now()),
@@ -101,7 +101,7 @@ VALUES
   ('TV12-8',  'TV12-8',  'L12 - SISTEMA AUXILIARES',            true, now()),
 
   -- ── Linha 13 – JADE ─────────────────────────────────────
-  ('TV13',    'TV13',    'TRIVIA TRENS LINHA 13 - JADE',        true, now()),
+  ('TV13',    'TV13',    'MVP SAF LINHA 13 - JADE',             true, now()),
   ('TV13-2',  'TV13-2',  'L13 - SISTEMA DE ENERGIA',            true, now()),
   ('TV13-3',  'TV13-3',  'L13 - SISTEMA DE REDE AÉREA',         true, now()),
   ('TV13-4',  'TV13-4',  'L13 - SISTEMA SINALIZAÇÃO',           true, now()),
@@ -111,7 +111,7 @@ VALUES
   ('TV13-8',  'TV13-8',  'L13 - SISTEMA AUXILIARES',            true, now()),
 
   -- ── TV36 – Multilinhas ──────────────────────────────────
-  ('TV36',    'TV36',    'TRIVIA TRENS L11, L12 E L13',         true, now()),
+  ('TV36',    'TV36',    'MVP SAF L11, L12 E L13',              true, now()),
   ('TV36-1',  'TV36-1',  'MATERIAL RODANTE E VEÍCULOS AUXILIARES', true, now()),
   ('TV36-5',  'TV36-5',  'TELECOM MULTILINHAS (CCO)',           true, now()),
   ('TV36-8',  'TV36-8',  'SISTEMA AUXILIARES MULTILINHAS',      true, now()),
@@ -249,7 +249,7 @@ VALUES
 --      descricao   = sintoma observado pelo operador/solicitante
 -- ─────────────────────────────────────────────────────────────
 
--- Limpa sintomas anteriores da TRIVIA
+-- Limpa sintomas anteriores da MVP SAF
 DELETE FROM sintomas_catalogo
 WHERE grupo IN ('ER','EL','MR','VP','CI','TE','SI','RE');
 

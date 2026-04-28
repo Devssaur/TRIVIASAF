@@ -4,7 +4,8 @@ from flask import Flask, jsonify, render_template
 from dotenv import load_dotenv
 
 # Carrega as variaveis antes de importar modulos que dependem delas.
-load_dotenv()
+# override=True evita que variaveis antigas do shell mascararem valores do .env.
+load_dotenv(override=True)
 
 from routes.auth import auth_bp
 from routes.solicitacoes import solicitacoes_bp

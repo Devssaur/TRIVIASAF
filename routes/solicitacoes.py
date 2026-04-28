@@ -272,10 +272,13 @@ def criar_saf():
             supabase.table("logs_auditoria").insert(
                 {
                     "usuario_id": dados.get("notificador_id"),
-                    "acao": "CRIACAO_SAF",
-                    "entidade": "saf_solicitacoes",
-                    "entidade_id": str(saf_id),
-                    "dados_depois": {"ticket_saf": ticket, "dados_enviados": nova_saf},
+                    "evento": "CRIACAO_SAF",
+                    "payload": {
+                        "entidade": "saf_solicitacoes",
+                        "entidade_id": str(saf_id),
+                        "ticket_saf": ticket,
+                        "dados_enviados": nova_saf,
+                    },
                 }
             ).execute()
         except Exception:

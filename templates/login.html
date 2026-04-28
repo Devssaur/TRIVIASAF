@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acesso &ndash; SAF Trivia</title>
+  <title>Acesso &ndash; MVP SAF</title>
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/saf.css') }}">
   <style>
@@ -199,11 +199,11 @@
 <header class="toolbar">
   <div class="toolbar-top">
     <div class="toolbar-brand">
-      <span class="toolbar-title">Trivia SAF</span>
+      <span class="toolbar-title">MVP SAF</span>
     </div>
     <div class="toolbar-user">
       <img src="{{ url_for('static', filename='logo.png') }}"
-           class="toolbar-logo" alt="Trivia SAF">
+           class="toolbar-logo" alt="MVP SAF">
     </div>
   </div>
 </header><!-- no toolbar-nav on login page -->
@@ -233,7 +233,7 @@
         <div class="field-group">
           <label class="field-label" for="login-email">E-mail corporativo</label>
           <input type="email" id="login-email" class="field-input"
-                 placeholder="seu@triviatrens.com.br"
+                 placeholder="seu@mvpsaf.com.br"
                  autocomplete="username" required>
           <span class="field-error">Informe um e-mail válido.</span>
         </div>
@@ -290,7 +290,7 @@
             <label class="field-label" for="cad-empresa">Empresa</label>
             <select id="cad-empresa" class="field-input" required>
               <option value="">Selecione...</option>
-              <option value="TRIVIA">Trivia Trens</option>
+              <option value="TRIVIA">MVP SAF</option>
               <option value="TIC">Tic Trens</option>
               <option value="METROBH">Metrô BH</option>
               <option value="GOCIL">Gocil</option>
