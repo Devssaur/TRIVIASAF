@@ -76,6 +76,13 @@ create policy "Leitura publica dados mestres - sintomas"
   to anon
   using (true);
 
+alter table public.frotas_trens enable row level security;
+create policy "Leitura publica dados mestres - frotas"
+  on public.frotas_trens
+  for select
+  to anon
+  using (true);
+
 -- =========================================================
 -- logs_auditoria
 -- Somente leitura via service_role (nunca anon)

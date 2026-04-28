@@ -10,7 +10,7 @@ dados_bp = Blueprint("dados_bp", __name__)
 
 def _get_supabase_client() -> Client:
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
+    supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY")
 
     if not supabase_url or not supabase_key:
         raise RuntimeError("Variaveis SUPABASE_URL e SUPABASE_KEY nao configuradas.")
@@ -32,6 +32,54 @@ def listar_locais():
     """
     try:
         supabase = _get_supabase_client()
+        categoria = (request.args.get("categoria") or "").strip().upper()
+
+        if categoria == "MRO":
+            result = (
+                supabase.table("frotas_trens")
+                .select("serie_trem")
+                .order("serie_trem")
+                .execute()
+            )
+            series = []
+            seen = set()
+            for row in result.data:
+                serie = (row.get("serie_trem") or "").strip()
+                if not serie or serie in seen:
+                    continue
+                seen.add(serie)
+                series.append({
+                    "id": serie,
+                    "codigo": "",
+                    "descricao": serie,
+                    "lat": None,
+                    "lng": None,
+                })
+            return jsonify({"locais": series, "total": len(series)}), 200
+
+        if categoria == "VIA":
+            result = (
+                supabase.table("trechos_vias")
+                .select("linha")
+                .order("linha")
+                .execute()
+            )
+            linhas = []
+            seen = set()
+            for row in result.data:
+                linha = str(row.get("linha") or "").strip()
+                if not linha or linha in seen:
+                    continue
+                seen.add(linha)
+                linhas.append({
+                    "id": linha,
+                    "codigo": "",
+                    "descricao": linha,
+                    "lat": None,
+                    "lng": None,
+                })
+            return jsonify({"locais": linhas, "total": len(linhas)}), 200
+
         result = (
             supabase.table("locais_instalacao")
             .select("id_sap, codigo, descricao, lat, lng")
@@ -59,6 +107,56 @@ def listar_equipamentos_por_local(local_id_sap):
     """Equipamentos ativos de um local. 'id' = id_sap."""
     try:
         supabase = _get_supabase_client()
+        categoria = (request.args.get("categoria") or "").strip().upper()
+
+        if categoria == "MRO":
+            result = (
+                supabase.table("frotas_trens")
+                .select("prefixo_trem")
+                .eq("serie_trem", local_id_sap)
+                .order("prefixo_trem")
+                .execute()
+            )
+            equips = []
+            seen = set()
+            for row in result.data:
+                prefixo = (row.get("prefixo_trem") or "").strip()
+                if not prefixo or prefixo in seen:
+                    continue
+                seen.add(prefixo)
+                equips.append({
+                    "id": prefixo,
+                    "codigo": prefixo,
+                    "descricao": prefixo,
+                    "grupo_catalogo": None,
+                })
+            return jsonify({"equipamentos": equips, "total": len(equips)}), 200
+
+        if categoria == "VIA":
+            result = (
+                supabase.table("trechos_vias")
+                .select("codigo_local, descricao")
+                .eq("linha", local_id_sap)
+                .order("descricao")
+                .execute()
+            )
+            equips = []
+            seen = set()
+            for row in result.data:
+                codigo_local = str(row.get("codigo_local") or "").strip()
+                descricao = str(row.get("descricao") or "").strip()
+                key = f"{codigo_local}|{descricao}"
+                if not descricao or key in seen:
+                    continue
+                seen.add(key)
+                equips.append({
+                    "id": codigo_local or descricao,
+                    "codigo": codigo_local,
+                    "descricao": descricao,
+                    "grupo_catalogo": None,
+                })
+            return jsonify({"equipamentos": equips, "total": len(equips)}), 200
+
         # Usa LIKE com prefixo para que selecionar um local raiz (ex.: TV11)
         # também retorne equipamentos de seus subsistemas (TV11-2, TV11-7, etc.)
         result = (
@@ -147,6 +245,7 @@ def sugerir():
     q = (request.args.get("q") or "").strip()
     lat = request.args.get("lat", type=float)
     lng = request.args.get("lng", type=float)
+    categoria = (request.args.get("categoria") or "").strip().upper()
     has_gps = lat is not None and lng is not None
 
     if len(q) < 2:
@@ -161,6 +260,84 @@ def sugerir():
         pattern = f"%{q}%"
         sugestoes = []
         seen_equip_ids = set()
+
+        if categoria == "MRO":
+            trem_res = (
+                supabase.table("frotas_trens")
+                .select("serie_trem, prefixo_trem")
+                .ilike("prefixo_trem", pattern)
+                .order("prefixo_trem")
+                .limit(12)
+                .execute()
+            )
+
+            query_norm = q.lower()
+            itens = []
+            for row in trem_res.data:
+                prefixo = (row.get("prefixo_trem") or "").strip()
+                serie = (row.get("serie_trem") or "").strip()
+                if not prefixo:
+                    continue
+                score = 2
+                pref_norm = prefixo.lower()
+                if pref_norm == query_norm:
+                    score = 0
+                elif pref_norm.startswith(query_norm):
+                    score = 1
+                itens.append({
+                    "tipo": "trem",
+                    "equip_id": prefixo,
+                    "equip_nome": prefixo,
+                    "local_id": serie,
+                    "local_nome": serie,
+                    "sintoma_id": None,
+                    "sintoma_nome": None,
+                    "_score": score,
+                })
+
+            itens.sort(key=lambda x: (x["_score"], x["equip_nome"]))
+            for item in itens:
+                item.pop("_score", None)
+            return jsonify({"sugestoes": itens[:8]}), 200
+
+        if categoria == "VIA":
+            via_res = (
+                supabase.table("trechos_vias")
+                .select("codigo_local, linha, descricao")
+                .ilike("descricao", pattern)
+                .order("descricao")
+                .limit(12)
+                .execute()
+            )
+            query_norm = q.lower()
+            itens = []
+            for row in via_res.data:
+                descricao = str(row.get("descricao") or "").strip()
+                linha = str(row.get("linha") or "").strip()
+                codigo_local = str(row.get("codigo_local") or "").strip()
+                if not descricao:
+                    continue
+                desc_norm = descricao.lower()
+                score = 2
+                if desc_norm == query_norm:
+                    score = 0
+                elif desc_norm.startswith(query_norm):
+                    score = 1
+                itens.append({
+                    "tipo": "via",
+                    "equip_id": codigo_local or descricao,
+                    "equip_nome": descricao,
+                    "local_id": codigo_local or descricao,
+                    "local_nome": f"Linha {linha}" if linha else "",
+                    "sintoma_id": None,
+                    "sintoma_nome": None,
+                    "_score": score,
+                })
+
+            itens.sort(key=lambda x: (x["_score"], x["equip_nome"]))
+            for item in itens:
+                item.pop("_score", None)
+            return jsonify({"sugestoes": itens[:8]}), 200
 
         # Com GPS buscamos mais resultados para depois ordenar por distância
         limit_equip = 30 if has_gps else 8

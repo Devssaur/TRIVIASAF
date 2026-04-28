@@ -87,13 +87,22 @@ const API = (() => {
     sincronizarSap: (id)        => request('POST', `/sap/sincronizar/${id}`),
 
     // Dados mestres
-    sugerir:      (q, lat, lng) => {
+    sugerir:      (q, lat, lng, categoria) => {
       let url = `/dados/sugerir?q=${encodeURIComponent(q)}`;
       if (lat != null && lng != null) url += `&lat=${lat}&lng=${lng}`;
+      if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
       return request('GET', url);
     },
-    locais:       ()     => request('GET', '/dados/locais'),
-    equipamentos: (lid)  => request('GET', `/dados/equipamentos/${lid}`),
+    locais:       (categoria) => {
+      let url = '/dados/locais';
+      if (categoria) url += `?categoria=${encodeURIComponent(categoria)}`;
+      return request('GET', url);
+    },
+    equipamentos: (lid, categoria)  => {
+      let url = `/dados/equipamentos/${lid}`;
+      if (categoria) url += `?categoria=${encodeURIComponent(categoria)}`;
+      return request('GET', url);
+    },
     sintomas:     (eid)  => request('GET', `/dados/sintomas/${eid}`),
 
     // Admin

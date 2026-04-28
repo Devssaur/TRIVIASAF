@@ -129,9 +129,57 @@ create table if not exists public.logs_auditoria (
 );
 
 -- =========================================================
+-- Tabela: frotas_trens
+-- Relaciona series/prefixos de trens a um local de instalacao
+-- =========================================================
+create table if not exists public.frotas_trens (
+  id uuid not null default gen_random_uuid(),
+  codigo_local text not null,
+  serie_trem character varying(10) not null,
+  prefixo_trem character varying(10),
+  status character varying(20) default 'operacional',
+  criado_em timestamptz default now(),
+  atualizado_em timestamptz default now(),
+  constraint frotas_trens_pkey primary key (id),
+  constraint fk_local_instalacao
+    foreign key (codigo_local)
+    references public.locais_instalacao(codigo)
+    on update cascade
+    on delete cascade
+);
+
+-- =========================================================
+-- Tabela: trechos_vias
+-- Cadastro de trechos por linha e codigo de local
+-- =========================================================
+create table if not exists public.trechos_vias (
+  id uuid not null default gen_random_uuid(),
+  codigo_local text not null,
+  linha character varying(2) not null,
+  estacao_origem character varying(100) not null,
+  estacao_destino character varying(100) not null,
+  descricao text not null,
+  criado_em timestamptz default now(),
+  constraint trechos_vias_pkey primary key (id),
+  constraint trechos_vias_codigo_local_key unique (codigo_local)
+);
+
+-- =========================================================
 -- Indices para performance
 -- =========================================================
 create index if not exists idx_usuarios_perfil on public.usuarios(perfil);
+
+create index if not exists idx_frotas_codigo_local
+  on public.frotas_trens(codigo_local);
+
+create index if not exists idx_frotas_serie
+  on public.frotas_trens(serie_trem);
+
+create index if not exists idx_trechos_linha
+  on public.trechos_vias(linha);
+
+create index if not exists idx_trechos_codigo
+  on public.trechos_vias(codigo_local);
 
 create index if not exists idx_equipamentos_local_instalacao_id
   on public.equipamentos(local_instalacao_id);
@@ -190,6 +238,10 @@ for each row execute function public.fn_set_atualizado_em();
 
 create trigger trg_sintomas_catalogo_set_atualizado_em
 before update on public.sintomas_catalogo
+for each row execute function public.fn_set_atualizado_em();
+
+create trigger trg_frotas_trens_set_atualizado_em
+before update on public.frotas_trens
 for each row execute function public.fn_set_atualizado_em();
 
 create trigger trg_saf_solicitacoes_set_atualizado_em
