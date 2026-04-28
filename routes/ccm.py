@@ -47,7 +47,7 @@ def listar_pendentes():
                 'local_instalacao, local_instalacao_id, equipamento, equipamento_id, '
                 'sintoma_id, prioridade, data_inicio_avaria, hora_inicio_avaria, '
                 'notificador_id, notificador_nome, notificador_area, '
-                'anexo_evidencia_url, criado_em, '
+                'anexo_evidencia_url, foto_lat, foto_lng, criado_em, '
                 'status, motivo_devolucao, motivo_cancelamento, '
                 'atualizado_sap, tipo_nota, qmnum_duplicata, data_avaliacao, '
                 'saf_integracao_sap(qmnum, tipo_nota, status_integracao, mensagem_erro)'

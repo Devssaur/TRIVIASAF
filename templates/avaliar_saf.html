@@ -67,6 +67,12 @@
       <div class="card-header">
         <span class="card-title">📷 Evidência Fotográfica</span>
         <span id="foto-gps" style="color:var(--green);font-size:.8rem;font-weight:600;"></span>
+        <a id="foto-gps-map" href="#" target="_blank" rel="noopener noreferrer"
+           style="display:none;align-items:center;gap:3px;font-size:.78rem;font-weight:600;
+                  color:var(--primary);text-decoration:none;border:1px solid var(--border);
+                  border-radius:4px;padding:2px 8px;white-space:nowrap;">
+          🗺️ Ver no Mapa
+        </a>
       </div>
       <div class="card-body">
         <img id="foto-img" src="" alt="Evidência"
@@ -213,8 +219,11 @@ document.addEventListener('DOMContentLoaded', async function () {
   if (fotoUrl) {
     document.getElementById('foto-card').classList.remove('hidden');
     document.getElementById('foto-img').src = fotoUrl;
-    if (saf.foto_lat && saf.foto_lng)
+    if (saf.foto_lat && saf.foto_lng) {
       document.getElementById('foto-gps').textContent = `📍 Lat ${saf.foto_lat}, Lng ${saf.foto_lng}`;
+      const mapLink = document.getElementById('foto-gps-map');
+      if (mapLink) { mapLink.href = `https://www.google.com/maps?q=${saf.foto_lat},${saf.foto_lng}&z=17`; mapLink.style.display = 'inline-flex'; }
+    }
   }
 
   // Já avaliada

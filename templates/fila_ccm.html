@@ -98,10 +98,10 @@
 .ccm-card-photo {
   width: 90px;
   flex-shrink: 0;
-  align-self: stretch;
+  align-self: flex-start;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
 }
 .ccm-photo-img {
   width: 90px;
@@ -544,6 +544,17 @@
             ? `<img src="${saf.anexo_evidencia_url}" class="ccm-photo-img" alt="Evid\xeancia" loading="lazy"
                  onclick="window._ccmOpenLightbox('${saf.anexo_evidencia_url}')" title="Ampliar foto">`
             : `<div class="ccm-photo-placeholder">&#128247;<br><span>Sem foto</span></div>`
+          }
+          ${saf.foto_lat && saf.foto_lng
+            ? `<a href="https://www.google.com/maps?q=${saf.foto_lat},${saf.foto_lng}&z=17"
+                  target="_blank" rel="noopener noreferrer"
+                  style="display:flex;align-items:center;justify-content:center;gap:3px;
+                         font-size:.69rem;font-weight:600;color:var(--primary);
+                         text-decoration:none;margin-top:5px;white-space:nowrap;"
+                  title="Ver localização da foto no Google Maps">
+                &#127759; Ver no Mapa
+              </a>`
+            : ''
           }
         </div>
         <div class="ccm-card-content">

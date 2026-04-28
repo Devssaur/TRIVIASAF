@@ -425,9 +425,18 @@
                style="width:100%;max-height:300px;object-fit:contain;display:block;">
           <div style="position:absolute;bottom:0;left:0;right:0;
                       background:linear-gradient(transparent,rgba(0,0,0,.75));padding:.75rem 1rem;">
-            <div id="geo-status" style="display:none;align-items:center;gap:6px;
+            <div id="geo-status" style="display:none;align-items:center;gap:8px;
                                         color:#fff;font-size:.78rem;font-weight:600;">
               <span>&#128205;</span><span id="geo-coords"></span>
+              <a id="btn-ver-mapa" href="#" target="_blank" rel="noopener noreferrer"
+                 style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;
+                        color:#fff;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+                        border-radius:4px;padding:2px 7px;text-decoration:none;white-space:nowrap;
+                        transition:background .15s;"
+                 onmouseover="this.style.background='rgba(255,255,255,.3)'"
+                 onmouseout="this.style.background='rgba(255,255,255,.18)'">
+                &#127759; Ver no Mapa
+              </a>
             </div>
             <div id="geo-error" style="display:none;color:rgba(255,255,255,.65);font-size:.75rem;">
               &#8505;&#65039; GPS n&atilde;o dispon&iacute;vel &mdash; foto salva sem coordenadas
@@ -1143,6 +1152,8 @@ document.addEventListener('DOMContentLoaded', async function () {
       geoCoords.textContent = `Lat ${gps.lat}, Lng ${gps.lng}  (\xb1${gps.acc}m)`;
       geoStatus.style.display = 'flex';
       geoError.style.display  = 'none';
+      const btnMapa = document.getElementById('btn-ver-mapa');
+      if (btnMapa) btnMapa.href = `https://www.google.com/maps?q=${gps.lat},${gps.lng}&z=17`;
     } else {
       geoStatus.style.display = 'none';
       geoError.style.display  = 'block';
