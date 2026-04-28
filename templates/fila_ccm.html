@@ -90,7 +90,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: .35rem;
-  width: 110px;
+  width: 190px;
   flex-shrink: 0;
   padding-top: 2px;
 }
@@ -181,6 +181,11 @@
   color: var(--text-muted);
   padding-left: 1.3em;
 }
+.ccm-notif-data {
+  font-size: .74rem;
+  color: var(--text-muted);
+  padding-left: 1.3em;
+}
 .ccm-ticket {
   font-family: 'Courier New', monospace;
   font-size: 1rem;
@@ -220,6 +225,35 @@
   color: var(--text-muted);
   align-items: center;
 }
+.ccm-criticidade {
+  margin: 0;
+  padding: .5rem .55rem;
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ccm-criticidade-title {
+  font-size: .74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: .35rem;
+}
+.ccm-criticidade-options {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+.ccm-criticidade-option {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .76rem;
+  color: var(--text);
+}
+.ccm-criticidade-option input {
+  margin: 0;
+  accent-color: var(--primary);
+}
 .ccm-motivo-box {
   font-size: .8rem;
   color: #92400e;
@@ -233,12 +267,23 @@
 
 /* Right: actions */
 .ccm-card-actions {
+  min-width: 360px;
+  flex-shrink: 0;
+}
+.ccm-card-actions-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+}
+.ccm-criticidade-col {
+  flex: 0 0 210px;
+}
+.ccm-action-buttons {
+  flex: 1;
+  min-width: 130px;
   display: flex;
   flex-direction: column;
   gap: .45rem;
-  min-width: 130px;
-  flex-shrink: 0;
-  align-items: stretch;
 }
 .ccm-recusa-form {
   display: flex;
@@ -417,19 +462,33 @@
     const integ  = item.saf_integracao_sap || {};
     const id     = item.id;
     const status = item.status;
-    const sapOk  = item.atualizado_sap;
-    const ticket = saf.ticket_saf ? `#${String(saf.ticket_saf).padStart(6, '0')}` : `#${id.substring(0, 6).toUpperCase()}`;
+    const ticket = saf.ticket_saf ? `#${String(saf.ticket_saf).padStart(7, '0')}` : `#${id.substring(0, 7).toUpperCase()}`;
+    let inicioFalhaTxt = '';
+    if (saf.data_inicio_avaria) {
+      const [ano, mes, dia] = saf.data_inicio_avaria.split('-');
+      const hora = saf.hora_inicio_avaria ? saf.hora_inicio_avaria.substring(0,5) : '';
+      inicioFalhaTxt = hora ? `${dia}/${mes}/${ano} ${hora}` : `${dia}/${mes}/${ano}`;
+    }
 
-    // SAP badge — clickable only for approved records
-    const sapClickable = (status === 'APROVADA') ? ' clickable' : '';
-    const sapOnclick   = (status === 'APROVADA')
-      ? `onclick="window._ccmToggleSap('${id}', ${sapOk})"` : '';
-    const sapTitle = (status === 'APROVADA')
-      ? (sapOk ? 'SAP atualizado – clique para desfazer' : 'Clique para marcar SAP como atualizado')
-      : (sapOk ? 'SAP atualizado' : 'SAP ainda não atualizado');
-    const sapBadge = sapOk
-      ? `<span class="badge badge-sap-sim${sapClickable}" ${sapOnclick} title="${sapTitle}">&#10004; SAP</span>`
-      : `<span class="badge badge-sap-nao${sapClickable}" ${sapOnclick} title="${sapTitle}">&#10006; SAP</span>`;
+    const notificadorHtml = saf.notificador_nome
+      ? `<div class="ccm-notificador"><span class="ccm-notif-nome">&#128100; ${saf.notificador_nome}</span>${saf.notificador_area ? `<span class="ccm-notif-area">${saf.notificador_area}</span>` : ''}${inicioFalhaTxt ? `<span class="ccm-notif-data">${inicioFalhaTxt}</span>` : ''}</div>`
+      : '';
+    const prio = String(saf.prioridade || '').toUpperCase();
+    const criticidade = prio === 'BAIXA' || prio === '1' ? 1
+      : prio === 'MEDIA' || prio === 'MÉDIA' || prio === '2' ? 2
+      : prio === 'ALTA' || prio === '3' ? 3
+      : prio === 'CRITICA' || prio === 'CRÍTICA' || prio === '4' ? 4
+      : null;
+    const criticidadeHtml = `
+      <div class="ccm-criticidade">
+        <div class="ccm-criticidade-title">Criticidade </div>
+        <div class="ccm-criticidade-options">
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="1" ${criticidade === 1 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 1)"> Baixa (1)</label>
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="2" ${criticidade === 2 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 2)"> Média (2)</label>
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="3" ${criticidade === 3 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 3)"> Alta (3)</label>
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="4" ${criticidade === 4 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 4)"> Muito alta (4)</label>
+        </div>
+      </div>`;
 
     // QMNUM badge — aparece após aprovação
     let qmnumBadge = '';
@@ -444,19 +503,7 @@
 
     // Meta info row
     const metaParts = [];
-    if (saf.local_instalacao) metaParts.push(`&#128205; ${saf.local_instalacao}`);
-    metaParts.push(Fmt.prioBadge(saf.prioridade || 'MEDIA'));
-    if (saf.data_inicio_avaria) {
-      const [ano, mes, dia] = saf.data_inicio_avaria.split('-');
-      const hora = saf.hora_inicio_avaria ? saf.hora_inicio_avaria.substring(0,5) : '';
-      const dtHtml = hora
-        ? `<span style="display:inline-flex;flex-direction:column;line-height:1.25;">
-             <span>&#128336; ${dia}/${mes}/${ano}</span>
-             <span style="font-size:.72rem;color:var(--text-light);padding-left:1.1em;">${hora}</span>
-           </span>`
-        : `<span>&#128336; ${dia}/${mes}/${ano}</span>`;
-      metaParts.push(dtHtml);
-    }
+    if (saf.local_instalacao) metaParts.push(`${saf.local_instalacao}`);
     if (item.data_avaliacao) metaParts.push(`&#128197; ${Fmt.datetime(item.data_avaliacao)}`);
 
     // Action buttons
@@ -489,7 +536,7 @@
       <div class="ccm-card" id="card-${id}">
         <div class="ccm-card-meta">
           <span class="ccm-ticket">${ticket}</span>
-          ${sapBadge}
+          ${notificadorHtml}
           ${qmnumBadge}
         </div>
         <div class="ccm-card-photo">
@@ -501,18 +548,43 @@
         </div>
         <div class="ccm-card-content">
           <div class="ccm-title">${saf.titulo_falha || '—'}</div>
-          ${saf.descricao_longa ? `<div class="ccm-desc">${saf.descricao_longa}</div>` : ''}          ${saf.notificador_nome ? `<div class="ccm-notificador"><span class="ccm-notif-nome">&#128100; ${saf.notificador_nome}</span>${saf.notificador_area ? `<span class="ccm-notif-area">${saf.notificador_area}</span>` : ''}</div>` : ''}          <div class="ccm-meta-row">
+          ${saf.descricao_longa ? `<div class="ccm-desc">${saf.descricao_longa}</div>` : ''}
+          <div class="ccm-meta-row">
             ${metaParts.map(p => `<span>${p}</span>`).join('')}
           </div>
           ${motivoHtml}
         </div>
-        <div class="ccm-card-actions" id="actions-${id}">
-          ${actionsHtml}
+        <div class="ccm-card-actions">
+          <div class="ccm-card-actions-row">
+            <div class="ccm-criticidade-col">${criticidadeHtml}</div>
+            <div class="ccm-action-buttons" id="actions-${id}">${actionsHtml}</div>
+          </div>
         </div>
       </div>`;
   }
 
   // ───────── Actions ─────────
+  function nivelToPrioridade(nivel) {
+    if (String(nivel) === '1') return 'BAIXA';
+    if (String(nivel) === '2') return 'MEDIA';
+    if (String(nivel) === '3') return 'ALTA';
+    if (String(nivel) === '4') return 'CRITICA';
+    return 'MEDIA';
+  }
+
+  async function setPrioridade(id, nivel) {
+    const prioridade = nivelToPrioridade(nivel);
+    const res = await API.put(`/ccm/prioridade/${id}`, { prioridade });
+    if (!res.ok) {
+      Toast.error(res.data.erro || 'Erro ao atualizar criticidade.');
+      renderQueue();
+      return;
+    }
+    const item = allSafs.find(s => s.id === id);
+    if (item) item.prioridade = prioridade;
+    Toast.success('Criticidade atualizada.');
+  }
+
   function mostrarAceite(id) {
     const actDiv = document.getElementById('actions-' + id);
     if (!actDiv) return;
@@ -536,10 +608,12 @@
   async function aceitar(id) {
     const user = Auth.getUser();
     const tipoNota = document.getElementById('tipo-nota-' + id)?.value || 'YP';
+    const nivelSelecionado = document.querySelector(`input[name="crit-${id}"]:checked`)?.value || '2';
+    const prioridade = nivelToPrioridade(nivelSelecionado);
     const actDiv = document.getElementById('actions-' + id);
     if (actDiv) actDiv.innerHTML = `<div class="spinner" style="width:18px;height:18px;"></div>`;
 
-    const res = await API.avaliarSaf(id, { status: 'APROVADA', avaliador_id: user?.id, tipo_nota: tipoNota });
+    const res = await API.avaliarSaf(id, { status: 'APROVADA', avaliador_id: user?.id, tipo_nota: tipoNota, prioridade });
     if (!res.ok) {
       Toast.error(res.data.erro || 'Erro ao aceitar a SAF.');
       renderQueue();
@@ -622,6 +696,7 @@
 
   // Expose for inline onclick handlers
   window._ccmAceitar       = aceitar;
+  window._ccmSetPrioridade = setPrioridade;
   window._ccmMostrarAceite  = mostrarAceite;
   window._ccmConfirmarRecusa = confirmarRecusa;
   window._ccmMostrarRecusa = mostrarRecusa; // compat

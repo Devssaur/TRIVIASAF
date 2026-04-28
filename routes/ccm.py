@@ -17,6 +17,23 @@ def _get_supabase_client() -> Client:
     return create_client(url, key)
 
 
+def _normalize_prioridade(valor) -> str:
+    p = str(valor or '').strip().upper()
+    mapping = {
+        '1': 'BAIXA',
+        '2': 'MEDIA',
+        '3': 'ALTA',
+        '4': 'CRITICA',
+        'BAIXA': 'BAIXA',
+        'MEDIA': 'MEDIA',
+        'MÉDIA': 'MEDIA',
+        'ALTA': 'ALTA',
+        'CRITICA': 'CRITICA',
+        'CRÍTICA': 'CRITICA',
+    }
+    return mapping.get(p, '')
+
+
 # ==========================================
 # 1. ROTA GET: Listar SAFs para a fila CCM (exceto devolvidas)
 # ==========================================
@@ -52,6 +69,7 @@ def avaliar_saf(solicitacao_id):
     novo_status  = dados.get('status', '')
     motivo       = (dados.get('motivo_devolucao') or '').strip()
     avaliador_id = dados.get('avaliador_id')
+    prioridade = _normalize_prioridade(dados.get('prioridade'))
 
     if novo_status not in ('APROVADA', 'DEVOLVIDA'):
         return jsonify({"erro": "Status inválido. Use APROVADA ou DEVOLVIDA."}), 400
@@ -65,6 +83,8 @@ def avaliar_saf(solicitacao_id):
             "avaliado_por": avaliador_id,
             "data_avaliacao": datetime.now(timezone.utc).isoformat()
         }
+        if prioridade:
+            update_data["prioridade"] = prioridade
         if novo_status == 'DEVOLVIDA':
             update_data["motivo_devolucao"] = motivo
 
@@ -209,6 +229,27 @@ def avaliar_saf(solicitacao_id):
         return jsonify({"mensagem": f"SAF atualizada para {novo_status}."}), 200
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
+
+
+# ==========================================
+# 2.1 ROTA PUT: Atualizar criticidade/prioridade pelo CCM
+# ==========================================
+@ccm_bp.route('/prioridade/<string:solicitacao_id>', methods=['PUT'])
+def atualizar_prioridade_ccm(solicitacao_id):
+    dados = request.json or {}
+    prioridade = _normalize_prioridade(dados.get('prioridade'))
+    if not prioridade:
+        return jsonify({"erro": "Prioridade inválida. Use BAIXA, MEDIA, ALTA ou CRITICA."}), 400
+
+    try:
+        supabase = _get_supabase_client()
+        supabase.table('saf_solicitacoes') \
+            .update({'prioridade': prioridade}) \
+            .eq('id', solicitacao_id) \
+            .execute()
+        return jsonify({'mensagem': 'Prioridade atualizada.', 'prioridade': prioridade}), 200
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
 
 
 # ==========================================

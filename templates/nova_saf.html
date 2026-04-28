@@ -210,9 +210,11 @@
         <span class="section-num">3</span> Descrição da falha
       </div>
 
-      <p class="form-hint" style="margin:0;">
-        Se necessário, informe abaixo se houve ocorrência com cliente.
-      </p>
+      <div class="form-group" style="margin-top:.85rem;">
+        <textarea id="descricao_item3" name="descricao_item3"
+                  class="form-control" rows="3"
+                  placeholder="Descreva a falha"></textarea>
+      </div>
     </div>
 
     <style>
@@ -232,7 +234,6 @@
       </div>
 
       <div class="form-group" id="descricao-ocorrencia-wrap" style="display:none;">
-        <label class="form-label" for="descricao_ocorrencia">Descreva a ocorrência</label>
         <textarea id="descricao_ocorrencia" name="descricao_ocorrencia"
                   class="form-control" rows="3"
                   placeholder="Descreva a ocorrência"></textarea>
@@ -266,7 +267,7 @@
 
       <div class="form-group">
         <label class="form-label">
-          Qual o impacto agora?&nbsp;<span class="required">*</span>
+          Qual o impacto agora?
         </label>
         <!-- =====================================================
              URGENCY BUTTONS — cores dos botões de impacto
@@ -691,6 +692,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   function resetEtapaOQue() {
     clearTimeout(_suggestTimer);
     document.getElementById('descricao_falha').value = '';
+    document.getElementById('descricao_item3').value = '';
     document.getElementById('desc-error').style.display = 'none';
     document.getElementById('equip-error').style.display = 'none';
     document.getElementById('suggest-area').style.display = 'none';
@@ -740,14 +742,15 @@ document.addEventListener('DOMContentLoaded', async function () {
   function checkFormValid() {
     const hasTipoValido = isFluxoHabilitado();
     const hasSintoma = (document.getElementById('sintoma_id').value || '') !== '';
+    const hasDescItem2 = (document.getElementById('descricao_falha').value || '').trim().length >= 3;
+    const hasDescItem3 = (document.getElementById('descricao_item3').value || '').trim().length >= 3;
     const hasDesc    = hasSintoma
-                     || (document.getElementById('descricao_falha').value || '').trim().length >= 3;
-    const hasEquip   = (document.getElementById('equipamento_id').value  || '') !== '';
-    const hasPrio    = prioHidden.value !== '';
+                     || hasDescItem2
+                     || hasDescItem3;
     const hasDate    = document.getElementById('data_inicio_avaria').value !== ''
                     && document.getElementById('hora_inicio_avaria').value !== '';
     const hasPhoto   = !!window._capturedPhoto;
-    btnSubmit.disabled = !(hasTipoValido && hasDesc && hasEquip && hasPrio && hasDate && hasPhoto);
+    btnSubmit.disabled = !(hasTipoValido && hasDesc && hasDate && hasPhoto);
   }
 
   // ── Urgency buttons ───────────────────────────────
@@ -887,6 +890,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.getElementById('suggest-empty').style.display   = 'block';
       }
     }, 480);
+  });
+
+  document.getElementById('descricao_item3').addEventListener('input', function () {
+    checkFormValid();
   });
 
   // ── Manual accordion ─────────────────────────────
@@ -1165,26 +1172,28 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     const descricao  = (document.getElementById('descricao_falha').value || '').trim();
+    const descricaoItem3 = (document.getElementById('descricao_item3').value || '').trim();
+    const houveOcorrencia = !!document.getElementById('ocorrencia_cliente')?.checked;
+    const descricaoOcorrencia = houveOcorrencia
+      ? (document.getElementById('descricao_ocorrencia').value || '').trim()
+      : '';
+    const descricaoLonga = [
+      descricao,
+      descricaoItem3 ? `Detalhamento adicional: ${descricaoItem3}` : '',
+      descricaoOcorrencia ? `Ocorrência com cliente: ${descricaoOcorrencia}` : ''
+    ].filter(Boolean).join('\n\n');
     const equipId    = document.getElementById('equipamento_id').value;
     const prio       = prioHidden.value;
     const hasSintoma = (document.getElementById('sintoma_id').value || '') !== '';
 
-    if (!descricao && !hasSintoma) {
+    if (!descricao && !descricaoItem3 && !hasSintoma) {
       document.getElementById('desc-error').style.display = 'block';
-      Toast.warning('Descreva o problema ou selecione um sintoma.');
+      Toast.warning('Descreva o problema (item 2 ou item 3) ou selecione um sintoma.');
       return;
     }
     document.getElementById('desc-error').style.display = 'none';
-    if (!equipId) {
-      document.getElementById('equip-error').style.display = 'block';
-      Toast.warning('Identifique o equipamento pela busca ou pelo seletor manual.');
-      return;
-    }
-    if (!prio) {
-      document.getElementById('prio-error').style.display = 'block';
-      Toast.warning('Selecione o impacto atual.');
-      return;
-    }
+    document.getElementById('equip-error').style.display = 'none';
+    document.getElementById('prio-error').style.display = 'none';
     if (!window._capturedPhoto) {
       Toast.warning('Tire uma foto do equipamento antes de enviar.');
       document.getElementById('btn-open-camera').focus();
@@ -1193,7 +1202,33 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Auto-generate titulo_falha (max 40 chars)
     let titulo = '';
-    if (_sugestaoSel) {
+    const normalizeLabel = (txt) => String(txt || '').replace(/\s+\u2013\s+.*/, '').trim();
+
+    if (_tipoSelecionado === 'MRO') {
+      const localSel = document.getElementById('man-local');
+      const equipSel = document.getElementById('man-equip');
+      const serie = normalizeLabel(
+        _sugestaoSel?.local_nome
+        || localSel?.options?.[localSel.selectedIndex]?.text
+        || ''
+      );
+      const prefixo = normalizeLabel(
+        _sugestaoSel?.equip_nome
+        || equipSel?.options?.[equipSel.selectedIndex]?.text
+        || ''
+      );
+      if (serie || prefixo) {
+        titulo = `${serie}${serie && prefixo ? ' - ' : ''}${prefixo}`.substring(0, 40);
+      }
+    } else if (_tipoSelecionado === 'VIA') {
+      const equipSel = document.getElementById('man-equip');
+      const trechoFalha = normalizeLabel(
+        _sugestaoSel?.equip_nome
+        || equipSel?.options?.[equipSel.selectedIndex]?.text
+        || ''
+      );
+      if (trechoFalha) titulo = trechoFalha.substring(0, 40);
+    } else if (_sugestaoSel) {
       const parts = [_sugestaoSel.sintoma_nome, _sugestaoSel.equip_nome].filter(Boolean);
       titulo = parts.join(' \u2014 ').substring(0, 40);
     }
@@ -1204,7 +1239,12 @@ document.addEventListener('DOMContentLoaded', async function () {
       const equipSel = document.getElementById('man-equip');
       const sinTxt   = sinSel?.options[sinSel?.selectedIndex]?.text  || '';
       const eqTxt    = equipSel?.options[equipSel?.selectedIndex]?.text || '';
-      const parts    = [sinTxt, eqTxt].filter(s => s && s !== 'Selecione o equipamento' && s !== 'Selecione o local primeiro' && s !== 'Selecione o equipamento primeiro');
+      const parts    = [sinTxt, eqTxt].filter(s => s
+        && s !== 'Selecione o equipamento'
+        && s !== 'Selecione o local primeiro'
+        && s !== 'Selecione o equipamento primeiro'
+        && s !== 'N\u00e3o aplic\u00e1vel para MRO'
+        && s !== 'N\u00e3o aplic\u00e1vel para Via');
       titulo = parts[0]?.substring(0, 40) || 'Falha reportada';
     }
     document.getElementById('titulo_falha').value = titulo;
@@ -1216,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       notificador_nome:     user.nome  || '',
       notificador_area:     user.area  || '',
       titulo_falha:         titulo,
-      descricao_longa:      descricao,
+      descricao_longa:      descricaoLonga || descricao,
       local_instalacao_id:  document.getElementById('local_instalacao_id').value   || null,
       local_instalacao:     document.getElementById('local_instalacao_nome').value || '',
       equipamento_id:       equipId || null,
