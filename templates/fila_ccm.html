@@ -56,6 +56,38 @@
   font-weight: 700;
   font-size: .88rem;
 }
+.ccm-group-header-left {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-width: 0;
+}
+.ccm-group-header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+.ccm-dup-header-btn.active {
+  filter: saturate(1.2);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.28) inset;
+}
+.ccm-dup-confirm-btn {
+  margin-left: .45rem;
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+.ccm-dup-confirm-btn:hover {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #ffffff;
+}
+.ccm-dup-confirm-btn:disabled {
+  opacity: .55;
+  background: rgba(248,250,252,.5);
+  color: rgba(15,23,42,.85);
+  border-color: rgba(226,232,240,.7);
+}
 .ccm-gcount {
   display: inline-flex;
   align-items: center;
@@ -74,7 +106,7 @@
   display: flex;
   align-items: flex-start;
   gap: 1.25rem;
-  padding: 1rem 1.25rem;
+  padding: 1.05rem 1.3rem;
   border: 1px solid var(--border);
   border-top: none;
   background: var(--bg);
@@ -232,6 +264,11 @@
   border-radius: var(--radius);
   background: var(--surface);
 }
+.ccm-criticidade.is-locked {
+  opacity: .58;
+  filter: grayscale(.25);
+  background: #f3f4f6;
+}
 .ccm-criticidade-title {
   font-size: .74rem;
   font-weight: 700;
@@ -273,7 +310,7 @@
 .ccm-card-actions-row {
   display: flex;
   align-items: flex-start;
-  gap: .5rem;
+  gap: .75rem;
 }
 .ccm-criticidade-col {
   flex: 0 0 210px;
@@ -283,7 +320,19 @@
   min-width: 130px;
   display: flex;
   flex-direction: column;
-  gap: .45rem;
+  gap: .55rem;
+}
+.ccm-action-buttons.is-locked {
+  opacity: .62;
+}
+.ccm-lock-note {
+  font-size: .74rem;
+  font-weight: 700;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius);
+  padding: .25rem .45rem;
 }
 .ccm-recusa-form {
   display: flex;
@@ -307,6 +356,33 @@
 .ccm-recusa-form textarea:focus {
   border-color: var(--danger);
   box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+}
+.ccm-dup-check-wrap {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .2rem;
+  padding: .15rem 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: .8rem;
+  font-weight: 600;
+}
+.ccm-dup-check-wrap input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.ccm-btn-danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.ccm-btn-danger-outline:hover {
+  background: rgba(220, 38, 38, .08);
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* SAP badge variants */
@@ -360,6 +436,80 @@
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(var(--primary-rgb),.12);
 }
+
+@media (max-width: 900px) {
+  .ccm-card {
+    flex-wrap: wrap;
+    gap: .9rem;
+  }
+  .ccm-card-meta {
+    width: auto;
+    min-width: 150px;
+  }
+  .ccm-card-actions {
+    min-width: 100%;
+    width: 100%;
+  }
+  .ccm-card-actions-row {
+    flex-direction: column;
+    gap: .6rem;
+  }
+  .ccm-criticidade-col {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .ccm-group-header {
+    flex-wrap: wrap;
+    row-gap: .5rem;
+    padding: .55rem .75rem;
+  }
+  .ccm-group-header-left {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+  .ccm-group-header-right {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .ccm-dup-confirm-btn {
+    margin-left: .35rem;
+  }
+  .ccm-card {
+    padding: .85rem .8rem;
+    gap: .75rem;
+  }
+  .ccm-card-meta {
+    min-width: 0;
+    width: 100%;
+    gap: .3rem;
+  }
+  .ccm-card-photo {
+    width: 76px;
+  }
+  .ccm-photo-img,
+  .ccm-photo-placeholder {
+    width: 76px;
+    height: 76px;
+  }
+  .ccm-card-content {
+    width: calc(100% - 88px);
+  }
+  .ccm-title {
+    font-size: .9rem;
+  }
+  .ccm-desc {
+    font-size: .8rem;
+  }
+  .ccm-action-buttons,
+  .ccm-recusa-form {
+    min-width: 0;
+  }
+}
 </style>
 {% endblock %}
 
@@ -369,6 +519,8 @@
   let allSafs      = [];
   let activeFilter = 'PENDENTES';
   let activeEquip  = '';
+  const duplicateModeGroups = new Set();
+  const duplicateSelections = new Map();
 
   // ───────── Stats ─────────
   function updateStats() {
@@ -439,29 +591,60 @@
     });
 
     container.innerHTML = sorted.map(([equip, list]) => renderGroup(equip, list)).join('');
+
+    container.querySelectorAll('.js-dup-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const equip = decodeURIComponent(btn.dataset.equip || '');
+        toggleDuplicadoGroup(equip);
+      });
+    });
+
+    container.querySelectorAll('.js-dup-confirm').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const equip = decodeURIComponent(btn.dataset.equip || '');
+        confirmarDuplicadasGrupo(equip);
+      });
+    });
+  }
+
+  function getSelectionSet(equip) {
+    if (!duplicateSelections.has(equip)) duplicateSelections.set(equip, new Set());
+    return duplicateSelections.get(equip);
   }
 
   function renderGroup(equip, items) {
     const pend = items.filter(x => x.status === 'ABERTA').length;
+    const selectedCount = items.filter(x => x.status === 'ABERTA' && getSelectionSet(equip).has(x.id)).length;
+    const dupMode = duplicateModeGroups.has(equip);
     const pendBadge = pend > 0
       ? `<span class="ccm-gcount pend">${pend} pendente${pend > 1 ? 's' : ''}</span>`
+      : '';
+    const duplicadoBtn = pend > 0
+      ? `<button class="btn btn-warning btn-sm ccm-dup-header-btn ${dupMode ? 'active' : ''} js-dup-toggle" data-equip="${encodeURIComponent(equip)}">Duplicado</button>`
+      : '';
+    const confirmarSelecaoBtn = dupMode
+      ? `<button class="btn btn-outline btn-sm ccm-dup-confirm-btn js-dup-confirm" data-equip="${encodeURIComponent(equip)}" ${selectedCount === 0 ? 'disabled' : ''}>Confirmar seleção${selectedCount > 0 ? ` (${selectedCount})` : ''}</button>`
       : '';
     return `
       <div class="ccm-group">
         <div class="ccm-group-header">
-          <span>&#9874; ${equip}</span>
-          ${pendBadge}
-          <span class="ccm-gcount">${items.length} total</span>
+          <div class="ccm-group-header-left">
+            <span>&#9874; ${equip}</span>
+            ${pendBadge}
+            <span class="ccm-gcount">${items.length} total</span>
+          </div>
+          <div class="ccm-group-header-right">${duplicadoBtn}${confirmarSelecaoBtn}</div>
         </div>
-        ${items.map(renderCard).join('')}
+        ${items.map(item => renderCard(item, equip)).join('')}
       </div>`;
   }
 
-  function renderCard(item) {
+  function renderCard(item, equip) {
     const saf    = item;
     const integ  = item.saf_integracao_sap || {};
     const id     = item.id;
     const status = item.status;
+    const isEditable = status === 'ABERTA';
     const ticket = saf.ticket_saf ? `#${String(saf.ticket_saf).padStart(7, '0')}` : `#${id.substring(0, 7).toUpperCase()}`;
     let inicioFalhaTxt = '';
     if (saf.data_inicio_avaria) {
@@ -480,13 +663,13 @@
       : prio === 'CRITICA' || prio === 'CRÍTICA' || prio === '4' ? 4
       : null;
     const criticidadeHtml = `
-      <div class="ccm-criticidade">
+      <div class="ccm-criticidade ${isEditable ? '' : 'is-locked'}">
         <div class="ccm-criticidade-title">Criticidade </div>
         <div class="ccm-criticidade-options">
-          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="1" ${criticidade === 1 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 1)"> Baixa (1)</label>
-          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="2" ${criticidade === 2 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 2)"> Média (2)</label>
-          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="3" ${criticidade === 3 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 3)"> Alta (3)</label>
-          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="4" ${criticidade === 4 ? 'checked' : ''} onchange="window._ccmSetPrioridade('${id}', 4)"> Muito alta (4)</label>
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="1" ${criticidade === 1 ? 'checked' : ''} ${isEditable ? `onchange="window._ccmSetPrioridade('${id}', 1)"` : 'disabled'}> Baixa (1)</label>
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="2" ${criticidade === 2 ? 'checked' : ''} ${isEditable ? `onchange="window._ccmSetPrioridade('${id}', 2)"` : 'disabled'}> Média (2)</label>
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="3" ${criticidade === 3 ? 'checked' : ''} ${isEditable ? `onchange="window._ccmSetPrioridade('${id}', 3)"` : 'disabled'}> Alta (3)</label>
+          <label class="ccm-criticidade-option"><input type="radio" name="crit-${id}" value="4" ${criticidade === 4 ? 'checked' : ''} ${isEditable ? `onchange="window._ccmSetPrioridade('${id}', 4)"` : 'disabled'}> Muito alta (4)</label>
         </div>
       </div>`;
 
@@ -509,9 +692,14 @@
     // Action buttons
     let actionsHtml;
     if (status === 'ABERTA') {
+      const checked = getSelectionSet(equip).has(id) ? 'checked' : '';
+      const dupCheck = duplicateModeGroups.has(equip)
+        ? `<label class="ccm-dup-check-wrap"><input type="checkbox" id="dup-check-${id}" ${checked} onchange="window._ccmToggleDuplicadaItem('${id}', '${encodeURIComponent(equip)}', this.checked)"> Selecionar para duplicada</label>`
+        : '';
       actionsHtml = `
         <button class="btn btn-success btn-sm" onclick="window._ccmMostrarAceite('${id}')">&#10003; Aceitar</button>
-        <button class="btn btn-danger btn-sm" onclick="window._ccmMostrarRecusa('${id}')">&#10007; Recusar</button>`;
+        <button class="btn btn-sm ccm-btn-danger-outline" onclick="window._ccmMostrarRecusa('${id}')">&#10007; Recusar</button>
+        ${dupCheck}`;
     } else if (status === 'APROVADA') {
       actionsHtml = `<span style="font-size:.8rem;color:var(--green);font-weight:600;">&#10004; Aprovada</span>`;
     } else if (status === 'DEVOLVIDA') {
@@ -568,7 +756,7 @@
         <div class="ccm-card-actions">
           <div class="ccm-card-actions-row">
             <div class="ccm-criticidade-col">${criticidadeHtml}</div>
-            <div class="ccm-action-buttons" id="actions-${id}">${actionsHtml}</div>
+            <div class="ccm-action-buttons ${isEditable ? '' : 'is-locked'}" id="actions-${id}">${actionsHtml}${isEditable ? '' : '<span class="ccm-lock-note">Bloqueado para edicao</span>'}</div>
           </div>
         </div>
       </div>`;
@@ -695,6 +883,77 @@
     Toast.success('SAF devolvida ao solicitante.');
   }
 
+  function toggleDuplicadoGroup(equip) {
+    const hasOpen = allSafs.some(s => s.status === 'ABERTA' && (s.equipamento || 'Sem Equipamento') === equip);
+    if (!hasOpen) {
+      Toast.warning('Nao ha ordens abertas para este equipamento.');
+      return;
+    }
+
+    if (duplicateModeGroups.has(equip)) {
+      duplicateModeGroups.delete(equip);
+      duplicateSelections.delete(equip);
+    } else {
+      duplicateModeGroups.add(equip);
+    }
+    renderQueue();
+  }
+
+  function toggleDuplicadaItem(id, equipEncoded, checked) {
+    const equip = decodeURIComponent(equipEncoded || '');
+    const set = getSelectionSet(equip);
+    if (checked) set.add(id);
+    else set.delete(id);
+    renderQueue();
+  }
+
+  async function executarDuplicadasGrupo(equip, idsLote) {
+    const user = Auth.getUser();
+    const res = await API.duplicarLote(idsLote, user?.id);
+    if (!res.ok) {
+      Toast.error(res.data.erro || 'Erro ao marcar ordens como duplicadas.');
+      return;
+    }
+
+    const marcados = new Set((res.data.ids_marcados || []).map(String));
+    allSafs.forEach(s => {
+      if (marcados.has(String(s.id))) {
+        s.status = 'DUPLICADA';
+        s.data_avaliacao = new Date().toISOString();
+      }
+    });
+
+    duplicateSelections.delete(equip);
+    duplicateModeGroups.delete(equip);
+    updateStats();
+    renderQueue();
+    Toast.success(`${res.data.total_marcado || marcados.size} ordem(ns) marcadas como duplicadas.`);
+  }
+
+  function confirmarDuplicadasGrupo(equip) {
+    const selecionados = getSelectionSet(equip);
+    const idsLote = allSafs
+      .filter(s => s.status === 'ABERTA' && (s.equipamento || 'Sem Equipamento') === equip && selecionados.has(s.id))
+      .map(s => s.id);
+
+    if (!idsLote.length) {
+      Toast.warning('Selecione ao menos uma ordem para marcar como duplicada.');
+      return;
+    }
+
+    ConfirmModal.show({
+      title: 'Confirmar duplicadas',
+      message: `
+        <div style="font-size:.9rem;color:var(--text);line-height:1.5;">
+          <p style="margin:0 0 .45rem;">Voce esta prestes a marcar <strong>${idsLote.length}</strong> ordem(ns) como <strong>Duplicada</strong>.</p>
+          <p style="margin:0;">Deseja continuar?</p>
+        </div>`,
+      confirmText: 'Sim, marcar duplicadas',
+      confirmClass: 'btn-warning',
+      onConfirm: () => { executarDuplicadasGrupo(equip, idsLote); },
+    });
+  }
+
   async function toggleSap(id, currentVal) {
     const novoValor = !currentVal;
     const res = await API.toggleSap(id, novoValor);
@@ -710,6 +969,7 @@
   window._ccmSetPrioridade = setPrioridade;
   window._ccmMostrarAceite  = mostrarAceite;
   window._ccmConfirmarRecusa = confirmarRecusa;
+  window._ccmToggleDuplicadaItem = toggleDuplicadaItem;
   window._ccmMostrarRecusa = mostrarRecusa; // compat
   window._ccmToggleSap     = toggleSap;
   window._ccmRenderQueue   = renderQueue;

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}MVP SAF{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/saf.css') }}">
@@ -45,6 +45,7 @@
         <option value="">— selecione um perfil —</option>
         <option value="SOLICITANTE">Solicitante</option>
         <option value="CCM">CCM</option>
+        <option value="SIC">SIC</option>
         <option value="ADMIN">Administrador</option>
       </select>
     </div>

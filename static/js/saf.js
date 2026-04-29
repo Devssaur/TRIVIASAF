@@ -35,7 +35,7 @@ const Auth = (() => {
   function redirectIfLoggedIn() {
     const user = getUser();
     if (!user) return;
-    const dest = { SOLICITANTE: '/novasaf', CCM: '/filaccm', ADMIN: '/admin' };
+    const dest = { SOLICITANTE: '/novasaf', CCM: '/filaccm', ADMIN: '/admin', SIC: '/chamados-sic' };
     window.location.href = dest[user.perfil] || '/novasaf';
   }
 
@@ -74,6 +74,7 @@ const API = (() => {
 
     // Solicitações
     minhasSafs:   (uid)   => request('GET', `/solicitacoes/minhassafs/${uid}`),
+    notificacoesSic: ()   => request('GET', '/solicitacoes/sic/notificacoes'),
     criarSaf:     (body)  => request('POST', '/solicitacoes/criar', body),
     buscarSaf:    (id)    => request('GET', `/solicitacoes/${id}`),
     editarSaf:    (id, b) => request('PUT', `/solicitacoes/${id}`, b),
@@ -82,6 +83,7 @@ const API = (() => {
     // CCM
     filaCCM:        ()          => request('GET', '/ccm/pendentes'),
     avaliarSaf:     (id, body)  => request('PUT', `/ccm/avaliar/${id}`, body),
+    duplicarLote:   (ids, avaliador_id) => request('PUT', '/ccm/duplicar-lote', { ids, avaliador_id }),
 
     // SAP
     sincronizarSap: (id)        => request('POST', `/sap/sincronizar/${id}`),
@@ -262,7 +264,7 @@ function setupToolbar() {
 
   const perfil = document.getElementById('toolbar-perfil');
   if (perfil) {
-    const labels = { SOLICITANTE: 'Solicitante', CCM: 'CCM', ADMIN: 'Administrador' };
+    const labels = { SOLICITANTE: 'Solicitante', CCM: 'CCM', ADMIN: 'Administrador', SIC: 'SIC' };
     perfil.textContent = labels[user.perfil] || user.perfil;
   }
 
@@ -305,6 +307,9 @@ function _setupSidebar(user) {
     CCM: [
       { href: '/filaccm', label: 'Fila CCM', icon: '&#128203;' },
     ],
+    SIC: [
+      { href: '/chamados-sic', label: 'Chamados SIC', icon: '&#128202;' },
+    ],
     ADMIN: [
       { href: '/admin', label: 'Administração', icon: '&#9881;' },
     ],
@@ -330,8 +335,8 @@ function _setupSidebar(user) {
   // Dev profile switcher (only rendered when DEV_MODE=true on server)
   const devSelect = document.getElementById('dev-perfil-select');
   if (devSelect) {
-    const DB_PERFIL = { SOLICITANTE: 'Solicitante', CCM: 'CCM', ADMIN: 'Administrador' };
-    const DEST      = { SOLICITANTE: '/novasaf', CCM: '/filaccm', ADMIN: '/admin' };
+    const DB_PERFIL = { SOLICITANTE: 'Solicitante', CCM: 'CCM', ADMIN: 'Administrador', SIC: 'SIC' };
+    const DEST      = { SOLICITANTE: '/novasaf', CCM: '/filaccm', ADMIN: '/admin', SIC: '/chamados-sic' };
     devSelect.addEventListener('change', async function () {
       const appPerfil = this.value;
       if (!appPerfil) return;

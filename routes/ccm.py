@@ -47,7 +47,7 @@ def listar_pendentes():
                 'local_instalacao, local_instalacao_id, equipamento, equipamento_id, '
                 'sintoma_id, prioridade, data_inicio_avaria, hora_inicio_avaria, '
                 'notificador_id, notificador_nome, notificador_area, '
-                'anexo_evidencia_url, foto_lat, foto_lng, criado_em, '
+                'anexo_evidencia_url, criado_em, '
                 'status, motivo_devolucao, motivo_cancelamento, '
                 'atualizado_sap, tipo_nota, qmnum_duplicata, data_avaliacao, '
                 'saf_integracao_sap(qmnum, tipo_nota, status_integracao, mensagem_erro)'
@@ -248,6 +248,76 @@ def atualizar_prioridade_ccm(solicitacao_id):
             .eq('id', solicitacao_id) \
             .execute()
         return jsonify({'mensagem': 'Prioridade atualizada.', 'prioridade': prioridade}), 200
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+# ==========================================
+# 2.2 ROTA PUT: Marcar ordens como DUPLICADA em lote
+# ==========================================
+@ccm_bp.route('/duplicar-lote', methods=['PUT'])
+def duplicar_lote_ccm():
+    dados = request.json or {}
+    ids = dados.get('ids') or []
+    avaliador_id = dados.get('avaliador_id')
+
+    if not isinstance(ids, list) or not ids:
+        return jsonify({'erro': 'Informe uma lista de IDs para duplicar.'}), 400
+
+    # Remove vazios e duplicados preservando ordem
+    ids_limpos = []
+    vistos = set()
+    for sid in ids:
+        sid_txt = str(sid or '').strip()
+        if not sid_txt or sid_txt in vistos:
+            continue
+        vistos.add(sid_txt)
+        ids_limpos.append(sid_txt)
+
+    if not ids_limpos:
+        return jsonify({'erro': 'Nenhum ID valido foi informado.'}), 400
+
+    try:
+        supabase = _get_supabase_client()
+        abertas = supabase.table('saf_solicitacoes') \
+            .select('id') \
+            .in_('id', ids_limpos) \
+            .eq('status', 'ABERTA') \
+            .execute()
+
+        abertas_ids = [r.get('id') for r in (abertas.data or []) if r.get('id')]
+        if not abertas_ids:
+            return jsonify({'erro': 'Nenhuma ordem aberta encontrada para marcar como duplicada.'}), 400
+
+        agora = datetime.now(timezone.utc).isoformat()
+        for sid in abertas_ids:
+            supabase.table('saf_solicitacoes') \
+                .update({
+                    'status': 'DUPLICADA',
+                    'data_avaliacao': agora,
+                    'avaliado_por': avaliador_id,
+                }) \
+                .eq('id', sid) \
+                .execute()
+
+        try:
+            supabase.table('logs_auditoria').insert({
+                'evento': 'CCM_DUPLICADA_LOTE',
+                'payload': {
+                    'total_solicitado': len(ids_limpos),
+                    'total_marcado': len(abertas_ids),
+                    'ids': abertas_ids,
+                    'avaliador_id': avaliador_id,
+                },
+            }).execute()
+        except Exception:
+            pass
+
+        return jsonify({
+            'mensagem': 'Ordens marcadas como duplicadas.',
+            'total_marcado': len(abertas_ids),
+            'ids_marcados': abertas_ids,
+        }), 200
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
