@@ -231,6 +231,44 @@ def listar_sintomas_por_equipamento(equipamento_id_sap):
         return jsonify({"erro": str(e)}), 500
 
 
+@dados_bp.route("/estacoes", methods=["GET"])
+def listar_estacoes():
+    """Lista estacoes da tabela estacoes.
+
+    Query params:
+      linha - filtro opcional pela coluna linha.
+    """
+    try:
+        supabase = _get_supabase_client()
+        linha = (request.args.get("linha") or "").strip()
+
+        q = (
+            supabase.table("estacoes")
+            .select("id, linha, estacao, sigla")
+            .order("linha")
+            .order("estacao")
+        )
+        if linha:
+            q = q.eq("linha", linha)
+
+        result = q.execute()
+
+        estacoes = [
+            {
+                "id": r.get("id"),
+                "linha": str(r.get("linha") or "").strip(),
+                "estacao": str(r.get("estacao") or "").strip(),
+                    "sigla": str(r.get("sigla") or "").strip(),
+            }
+            for r in (result.data or [])
+            if str(r.get("linha") or "").strip() and str(r.get("estacao") or "").strip()
+        ]
+
+        return jsonify({"estacoes": estacoes, "total": len(estacoes)}), 200
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+
 @dados_bp.route("/sugerir", methods=["GET"])
 def sugerir():
     """Busca inteligente por equipamentos/sintomas a partir de texto livre.

@@ -560,6 +560,23 @@
     else activeEquip = '';
   }
 
+  function escHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatDescricaoComOcorrencia(texto) {
+    const escaped = escHtml(texto);
+    return escaped.replace(
+      /(Ocorr(?:e|ê)ncia com cliente:[^\n\r]*)/gi,
+      '<strong style="color:#dc2626;font-weight:800;">$1</strong>'
+    );
+  }
+
   // ───────── Render ─────────
   function renderQueue() {
     const container = document.getElementById('ccm-queue');
@@ -747,7 +764,7 @@
         </div>
         <div class="ccm-card-content">
           <div class="ccm-title">${saf.titulo_falha || '—'}</div>
-          ${saf.descricao_longa ? `<div class="ccm-desc">${saf.descricao_longa}</div>` : ''}
+          ${saf.descricao_longa ? `<div class="ccm-desc">${formatDescricaoComOcorrencia(saf.descricao_longa)}</div>` : ''}
           <div class="ccm-meta-row">
             ${metaParts.map(p => `<span>${p}</span>`).join('')}
           </div>

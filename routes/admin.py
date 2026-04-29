@@ -5,6 +5,21 @@ from supabase import Client, create_client
 admin_bp = Blueprint("admin_bp", __name__)
 
 
+VALID_PROFILES = ("Solicitante", "CCM", "Administrador", "SIC")
+
+
+def _normalize_profile(perfil: str | None) -> str:
+    perfil_normalizado = (perfil or "").strip()
+    mapa = {
+        "SOLICITANTE": "Solicitante",
+        "CCM": "CCM",
+        "ADMIN": "Administrador",
+        "ADMINISTRADOR": "Administrador",
+        "SIC": "SIC",
+    }
+    return mapa.get(perfil_normalizado.upper(), perfil_normalizado)
+
+
 def _get_supabase_client() -> Client:
     supabase_url = os.getenv("SUPABASE_URL")
     # Operações admin usam a service_role key para bypasser RLS
@@ -72,11 +87,13 @@ def listar_usuarios():
 def aprovar_usuario(usuario_id):
     payload  = request.get_json(silent=True) or {}
     aprovado = payload.get("aprovado", True)   # True = aprovar, False = bloquear
-    perfil   = payload.get("perfil")           # opcional: alterar perfil ao mesmo tempo
+    perfil   = _normalize_profile(payload.get("perfil"))  # opcional: alterar perfil ao mesmo tempo
     ator_id  = payload.get("ator_id")
 
     update_data = {"aprovado": bool(aprovado)}
     if perfil:
+        if perfil not in VALID_PROFILES:
+            return jsonify({"erro": "Perfil inválido."}), 400
         update_data["perfil"] = perfil
 
     try:
@@ -119,9 +136,9 @@ def aprovar_usuario(usuario_id):
 @admin_bp.route("/usuarios/<usuario_id>/perfil", methods=["PUT"])
 def alterar_perfil(usuario_id):
     payload = request.get_json(silent=True) or {}
-    perfil  = (payload.get("perfil") or "").strip()
+    perfil  = _normalize_profile(payload.get("perfil"))
     ator_id = payload.get("ator_id")
-    if perfil not in ("Solicitante", "CCM", "Administrador"):
+    if perfil not in VALID_PROFILES:
         return jsonify({"erro": "Perfil inválido."}), 400
 
     try:
@@ -165,11 +182,11 @@ def editar_usuario(usuario_id):
     email = (payload.get("email") or "").strip().lower()
     empresa = (payload.get("empresa") or "").strip() or None
     area = (payload.get("area") or "").strip() or None
-    perfil = (payload.get("perfil") or "").strip()
+    perfil = _normalize_profile(payload.get("perfil"))
 
     if not nome or not email:
         return jsonify({"erro": "Nome e e-mail são obrigatórios."}), 400
-    if perfil not in ("Solicitante", "CCM", "Administrador"):
+    if perfil not in VALID_PROFILES:
         return jsonify({"erro": "Perfil inválido."}), 400
 
     try:

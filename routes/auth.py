@@ -14,6 +14,7 @@ def _to_app_profile(db_perfil: str) -> str:
         "Solicitante": "SOLICITANTE",
         "CCM": "CCM",
         "Administrador": "ADMIN",
+        "SIC": "SIC",
     }
     return mapa.get(db_perfil, db_perfil)
 
@@ -24,6 +25,7 @@ def _to_db_profile(app_perfil: str) -> str:
         "SOLICITANTE": "Solicitante",
         "CCM": "CCM",
         "ADMIN": "Administrador",
+        "SIC": "SIC",
     }
     return mapa.get(app_perfil, app_perfil)
 

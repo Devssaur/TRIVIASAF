@@ -100,6 +100,11 @@ const API = (() => {
       if (categoria) url += `?categoria=${encodeURIComponent(categoria)}`;
       return request('GET', url);
     },
+    estacoes:     (linha) => {
+      let url = '/dados/estacoes';
+      if (linha) url += `?linha=${encodeURIComponent(linha)}`;
+      return request('GET', url);
+    },
     equipamentos: (lid, categoria)  => {
       let url = `/dados/equipamentos/${lid}`;
       if (categoria) url += `?categoria=${encodeURIComponent(categoria)}`;

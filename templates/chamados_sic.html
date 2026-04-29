@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Chamados SIC{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+{% endblock %}
+
+{% block toolbar_nav %}
+<a href="/chamados-sic" class="nav-tab active">Chamado SIC</a>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <div>
+      <p class="page-title" id="sic-title">Dashboard SIC</p>
+      <p class="page-subtitle">Visualize todas as notificacoes criadas e filtre por status em formato de tabela.</p>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total">-</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-value" id="stat-abertas">-</div>
+      <div class="stat-label">Pendentes</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-value" id="stat-aprovadas">-</div>
+      <div class="stat-label">Aprovadas</div>
+    </div>
+    <div class="stat-card" style="--sv: var(--purple);">
+      <div class="stat-value" id="stat-devolvidas" style="color:var(--purple);">-</div>
+      <div class="stat-label">Devolvidas</div>
+    </div>
+  </div>
+
+  <div class="filter-bar" id="filter-bar" style="margin-bottom:.6rem;">
+    <button class="filter-tab active" data-filter="TODAS">Todas <span class="fcount" id="fc-todas">0</span></button>
+    <button class="filter-tab" data-filter="ABERTA">Pendentes <span class="fcount" id="fc-aberta">0</span></button>
+    <button class="filter-tab" data-filter="APROVADA">Aprovadas <span class="fcount" id="fc-aprovada">0</span></button>
+    <button class="filter-tab" data-filter="DEVOLVIDA">Devolvidas <span class="fcount" id="fc-devolvida">0</span></button>
+    <button class="filter-tab" data-filter="CANCELADA">Canceladas <span class="fcount" id="fc-cancelada">0</span></button>
+    <button class="filter-tab" data-filter="DUPLICADA">Duplicadas <span class="fcount" id="fc-duplicada">0</span></button>
+  </div>
+
+  <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.65rem;">
+    <input id="sic-search" type="text" class="form-control" placeholder="Buscar por ticket, titulo, equipamento, local ou notificador..." style="min-width:280px;max-width:560px;flex:1;">
+    <label for="sic-page-size" style="font-size:.82rem;color:var(--text-muted);font-weight:600;">Ordens por pagina</label>
+    <select id="sic-page-size" class="form-control" style="width:110px;">
+      <option value="50" selected>50</option>
+      <option value="100">100</option>
+      <option value="150">150</option>
+      <option value="200">200</option>
+    </select>
+    <button id="btn-export-pdf" type="button" class="btn btn-outline btn-sm">Baixar PDF</button>
+  </div>
+
+  <div class="table-wrapper" id="table-container">
+    <div class="spinner-center"><div class="spinner"></div></div>
+  </div>
+
+  <div id="sic-pagination" style="display:flex;justify-content:flex-end;align-items:center;gap:.45rem;margin-top:.75rem;"></div>
+</div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+  const user = Auth.requireAuth(['SIC']);
+  if (!user) return;
+
+  document.getElementById('sic-title').textContent = `Dashboard SIC - ${user.nome.split(' ')[0]}`;
+
+  let allSafs = [];
+  let activeFilter = 'TODAS';
+  let activeSearch = '';
+  let pageSize = 50;
+  let currentPage = 1;
+
+  const res = await API.notificacoesSic();
+  if (!res.ok) {
+    document.getElementById('table-container').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#9888;</div>
+        <p class="empty-state-title">Erro ao carregar notificacoes</p>
+        <p class="empty-state-text">${res.data.erro || 'Tente novamente mais tarde.'}</p>
+      </div>`;
+    return;
+  }
+
+  allSafs = res.data.solicitacoes || [];
+
+  function getStatus(saf) {
+    const integ = saf.saf_integracao_sap || {};
+    if (integ.status_integracao === 'SUCESSO' && integ.qmnum) return 'APROVADA';
+    return saf.status || 'ABERTA';
+  }
+
+  function updateCounters() {
+    const c = { ABERTA: 0, APROVADA: 0, DEVOLVIDA: 0, CANCELADA: 0, DUPLICADA: 0 };
+    allSafs.forEach(s => { const st = getStatus(s); if (c[st] !== undefined) c[st]++; });
+
+    document.getElementById('stat-total').textContent = allSafs.length;
+    document.getElementById('stat-abertas').textContent = c.ABERTA;
+    document.getElementById('stat-aprovadas').textContent = c.APROVADA;
+    document.getElementById('stat-devolvidas').textContent = c.DEVOLVIDA;
+
+    document.getElementById('fc-todas').textContent = allSafs.length;
+    document.getElementById('fc-aberta').textContent = c.ABERTA;
+    document.getElementById('fc-aprovada').textContent = c.APROVADA;
+    document.getElementById('fc-devolvida').textContent = c.DEVOLVIDA;
+    document.getElementById('fc-cancelada').textContent = c.CANCELADA;
+    document.getElementById('fc-duplicada').textContent = c.DUPLICADA;
+  }
+
+  function applyFilters() {
+    const q = activeSearch.trim().toLowerCase();
+    return allSafs.filter(s => {
+      const st = getStatus(s);
+      if (activeFilter !== 'TODAS' && st !== activeFilter) return false;
+      if (!q) return true;
+      const text = [
+        s.ticket_saf,
+        s.titulo_falha,
+        s.equipamento,
+        s.local_instalacao,
+        s.notificador_nome,
+        s.notificador_area,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return text.includes(q);
+    });
+  }
+
+  function exportVisiblePdf() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      Toast.error('Biblioteca de PDF indisponivel no momento.');
+      return;
+    }
+
+    const data = applyFilters();
+    if (!data.length) {
+      Toast.warning('Nao ha registros visiveis para exportar.');
+      return;
+    }
+
+    const jsPDF = window.jspdf.jsPDF;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const now = new Date();
+    const filtro = activeFilter === 'TODAS' ? 'Todas' : activeFilter;
+    const busca = (activeSearch || '').trim() || 'Sem busca';
+
+    doc.setFontSize(13);
+    doc.text('Chamados SIC - Tabela visivel', 40, 34);
+    doc.setFontSize(9);
+    doc.text(`Gerado em: ${now.toLocaleString('pt-BR')}`, 40, 50);
+    doc.text(`Filtro: ${filtro} | Busca: ${busca} | Total: ${data.length}`, 40, 64);
+
+    const body = data.map(s => {
+      const integ = s.saf_integracao_sap || {};
+      const st = getStatus(s);
+      const nota = integ.qmnum ? `${integ.tipo_nota || ''} ${integ.qmnum}`.trim() : '-';
+      return [
+        s.ticket_saf ? `SAF #${String(s.ticket_saf).padStart(6, '0')}` : '-',
+        Fmt.statusLabel(st),
+        s.titulo_falha || '-',
+        s.equipamento || '-',
+        s.local_instalacao || '-',
+        s.notificador_nome || '-',
+        Fmt.prioLabel(s.prioridade || 'MEDIA'),
+        nota,
+        Fmt.date(s.criado_em),
+      ];
+    });
+
+    doc.autoTable({
+      startY: 78,
+      head: [['Ticket', 'Status', 'Titulo', 'Equipamento', 'Local', 'Notificador', 'Prioridade', 'Nota SAP', 'Criado em']],
+      body,
+      styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+      headStyles: { fillColor: [30, 58, 95] },
+      columnStyles: {
+        2: { cellWidth: 160 },
+        3: { cellWidth: 85 },
+        4: { cellWidth: 110 },
+        5: { cellWidth: 95 },
+      },
+      margin: { left: 20, right: 20 },
+      theme: 'striped',
+    });
+
+    const fileStamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    doc.save(`chamados-sic-${fileStamp}.pdf`);
+  }
+
+  function renderPagination(totalItems) {
+    const pag = document.getElementById('sic-pagination');
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    if (totalItems <= pageSize) {
+      pag.innerHTML = '';
+      return;
+    }
+
+    const prevDisabled = currentPage === 1 ? 'disabled' : '';
+    const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+    pag.innerHTML = `
+      <button type="button" class="btn btn-outline btn-sm" id="sic-prev-page" ${prevDisabled}>Anterior</button>
+      <span style="font-size:.82rem;color:var(--text-muted);">Pagina ${currentPage} de ${totalPages}</span>
+      <button type="button" class="btn btn-outline btn-sm" id="sic-next-page" ${nextDisabled}>Proxima</button>`;
+
+    const prevBtn = document.getElementById('sic-prev-page');
+    const nextBtn = document.getElementById('sic-next-page');
+    if (prevBtn) prevBtn.addEventListener('click', function () { if (currentPage > 1) { currentPage--; renderTable(); } });
+    if (nextBtn) nextBtn.addEventListener('click', function () { if (currentPage < totalPages) { currentPage++; renderTable(); } });
+  }
+
+  function renderTable() {
+    const data = applyFilters();
+    const container = document.getElementById('table-container');
+
+    if (data.length === 0) {
+      document.getElementById('sic-pagination').innerHTML = '';
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">&#128269;</div>
+          <p class="empty-state-title">Nenhum chamado encontrado</p>
+          <p class="empty-state-text">Ajuste os filtros para ampliar a busca.</p>
+        </div>`;
+      return;
+    }
+
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageData = data.slice(start, end);
+
+    const rows = pageData.map(s => {
+      const integ = s.saf_integracao_sap || {};
+      const st = getStatus(s);
+      const nota = integ.qmnum
+        ? `<span class="font-mono" style="font-size:.8rem;">${integ.tipo_nota || ''} ${integ.qmnum}</span>`
+        : '<span class="text-muted">-</span>';
+      return `
+        <tr class="clickable" onclick="window.location.href='/saf/${s.id}'">
+          <td>${Fmt.ticket(s.ticket_saf)}</td>
+          <td>${Fmt.statusBadge(st)}</td>
+          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.titulo_falha || '-'}</td>
+          <td>${s.equipamento || '-'}</td>
+          <td>${s.local_instalacao || '-'}</td>
+          <td>${s.notificador_nome || '-'}</td>
+          <td>${Fmt.prioBadge(s.prioridade || 'MEDIA')}</td>
+          <td>${nota}</td>
+          <td class="text-muted text-sm">${Fmt.date(s.criado_em)}</td>
+        </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Status</th>
+            <th>Titulo</th>
+            <th>Equipamento</th>
+            <th>Local</th>
+            <th>Notificador</th>
+            <th>Prioridade</th>
+            <th>Nota SAP</th>
+            <th>Criado em</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+      renderPagination(data.length);
+  }
+
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      activeFilter = this.dataset.filter;
+      currentPage = 1;
+      renderTable();
+    });
+  });
+
+  document.getElementById('sic-search').addEventListener('input', function () {
+    activeSearch = this.value || '';
+    currentPage = 1;
+    renderTable();
+  });
+
+  document.getElementById('sic-page-size').addEventListener('change', function () {
+    pageSize = Math.max(50, Number(this.value) || 50);
+    currentPage = 1;
+    renderTable();
+  });
+
+  document.getElementById('btn-export-pdf').addEventListener('click', exportVisiblePdf);
+
+  updateCounters();
+  renderTable();
+});
+</script>
+{% endblock %}

@@ -146,6 +146,7 @@
           <select id="edit-perfil" class="form-control compact-control" required>
             <option value="Solicitante">Solicitante</option>
             <option value="CCM">CCM</option>
+            <option value="SIC">SIC</option>
             <option value="Administrador">Administrador</option>
           </select>
         </div>
@@ -211,6 +212,7 @@ document.addEventListener('DOMContentLoaded', async function () {
               onchange="mudarPerfilConfirm('${usuario.id}', this.value, this)">
         <option value="Solicitante" ${usuario.perfil==='Solicitante'?'selected':''}>Solicitante</option>
         <option value="CCM" ${usuario.perfil==='CCM'?'selected':''}>CCM</option>
+        <option value="SIC" ${usuario.perfil==='SIC'?'selected':''}>SIC</option>
         <option value="Administrador" ${usuario.perfil==='Administrador'?'selected':''}>Administrador</option>
       </select>`;
   }

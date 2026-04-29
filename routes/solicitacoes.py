@@ -71,6 +71,30 @@ def listar_minhas_safs(usuario_id):
         return jsonify({"erro": str(e)}), 500
 
 
+@solicitacoes_bp.route("/sic/notificacoes", methods=["GET"])
+def listar_notificacoes_sic():
+    try:
+        supabase = _get_supabase_client()
+    except RuntimeError:
+        return jsonify({"erro": "Configuracao do Supabase ausente"}), 500
+
+    try:
+        result = (
+            supabase.table("saf_solicitacoes")
+            .select(
+                "id, ticket_saf, titulo_falha, descricao_longa, prioridade, criado_em, "
+                "status, local_instalacao, equipamento, notificador_nome, notificador_area, "
+                "saf_integracao_sap(qmnum, tipo_nota, status_integracao)"
+            )
+            .order("criado_em", desc=True)
+            .execute()
+        )
+
+        return jsonify({"solicitacoes": result.data, "total": len(result.data)}), 200
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+
 @solicitacoes_bp.route("/criar", methods=["POST"])
 def criar_saf():
     dados = request.get_json(silent=True) or {}
@@ -92,8 +116,6 @@ def criar_saf():
         "notificador_id",
         "titulo_falha",
         "local_instalacao_id",
-        "equipamento_id",
-        "prioridade",
         "data_inicio_avaria",
         "hora_inicio_avaria",
     ]
@@ -117,22 +139,7 @@ def criar_saf():
             400,
         )
 
-    prioridade = str(dados.get("prioridade", "")).strip().upper()
-    if prioridade not in ("BAIXA", "MEDIA", "ALTA", "CRITICA"):
-        current_app.logger.warning(
-            "[CRIAR_SAF][%s] prioridade invalida: %s",
-            request_id,
-            prioridade,
-        )
-        return (
-            jsonify(
-                {
-                    "erro": "Campo 'prioridade' deve ser: BAIXA, MEDIA, ALTA ou CRITICA.",
-                    "request_id": request_id,
-                }
-            ),
-            400,
-        )
+    prioridade = "ALTA"
 
     try:
         supabase = _get_supabase_client()
